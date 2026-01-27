@@ -1,0 +1,1553 @@
+import React, { useState, useEffect } from 'react';
+import {
+    LayoutDashboard,
+    FilePlus,
+    Users,
+    Settings,
+    LogOut,
+    Plus,
+    Trash2,
+    Save,
+    Eye,
+    CheckCircle,
+    AlertTriangle,
+    Award,
+    Monitor,
+    FileText,
+    ChevronRight,
+    Edit3,
+    Upload,
+    Download,
+    FileSpreadsheet
+} from 'lucide-react';
+import * as XLSX from 'xlsx';
+import { useNavigate } from 'react-router-dom';
+import { X } from 'lucide-react';
+import { API_BASE_URL } from '../config';
+
+const Toast = ({ message, type, onClose }) => (
+    <div className={`fixed bottom-8 right-8 flex items-center gap-3 px-6 py-4 rounded-2xl shadow-2xl border transition-all animate-in slide-in-from-right-full duration-300 z-[9999] ${type === 'success' ? 'bg-cyan-900/90 border-cyan-500/50 text-cyan-50' :
+        type === 'error' ? 'bg-red-900/90 border-red-500/50 text-red-50' :
+            'bg-gray-900/90 border-gray-700 text-gray-50'
+        }`}>
+        {type === 'success' && <CheckCircle className="w-5 h-5 text-cyan-400" />}
+        {type === 'error' && <AlertTriangle className="w-5 h-5 text-red-400" />}
+        <span className="font-medium">{message}</span>
+        <button onClick={onClose} className="p-1 hover:bg-white/10 rounded-lg transition-colors ml-4">
+            <X className="w-4 h-4" />
+        </button>
+    </div>
+);
+
+const ConfirmModal = ({ isOpen, title, message, onConfirm, onCancel, confirmText, cancelText, type = 'danger' }) => {
+    if (!isOpen) return null;
+    return (
+        <div className="fixed inset-0 z-[10000] flex items-center justify-center p-4">
+            <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={onCancel}></div>
+            <div className="relative bg-[#1a1c23] border border-gray-800 rounded-2xl w-full max-w-md p-8 shadow-2xl animate-in zoom-in-95 duration-200">
+                <div className={`w-12 h-12 rounded-xl flex items-center justify-center mb-6 ${type === 'danger' ? 'bg-red-500/10 text-red-500' : 'bg-cyan-500/10 text-cyan-500'
+                    }`}>
+                    {type === 'danger' ? <Trash2 className="w-6 h-6" /> : <AlertTriangle className="w-6 h-6" />}
+                </div>
+                <h3 className="text-xl font-bold text-white mb-2">{title}</h3>
+                <p className="text-gray-400 mb-8 leading-relaxed">{message}</p>
+                <div className="flex gap-3">
+                    <button
+                        onClick={onCancel}
+                        className="flex-1 py-3 px-4 rounded-xl border border-gray-700 text-gray-400 font-bold hover:bg-gray-800 transition-all"
+                    >
+                        {cancelText || 'Cancel'}
+                    </button>
+                    <button
+                        onClick={onConfirm}
+                        className={`flex-1 py-3 px-4 rounded-xl text-white font-bold transition-all shadow-lg ${type === 'danger' ? 'bg-red-600 hover:bg-red-700 shadow-red-900/20' : 'bg-cyan-600 hover:bg-cyan-700 shadow-cyan-900/20'
+                            }`}
+                    >
+                        {confirmText || 'Confirm'}
+                    </button>
+                </div>
+            </div>
+        </div>
+    );
+};
+
+const Sidebar = ({ activeTab, setActiveTab, handleLogout }) => (
+    <div className="w-64 bg-gray-900 border-r border-gray-800 flex flex-col h-screen">
+        <div className="p-6 border-b border-gray-800">
+            <h1 className="text-xl font-bold bg-gradient-to-r from-cyan-400 to-blue-500 bg-clip-text text-transparent">
+                ParikshaX Admin
+            </h1>
+            <p className="text-xs text-gray-500 mt-1">Exam Control Center</p>
+        </div>
+
+        <nav className="flex-1 p-4 space-y-2">
+            <button
+                onClick={() => setActiveTab('dashboard')}
+                className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${activeTab === 'dashboard' ? 'bg-cyan-900/20 text-cyan-400 border border-cyan-800' : 'text-gray-400 hover:bg-gray-800 hover:text-white'}`}
+            >
+                <LayoutDashboard className="w-5 h-5" /> Dashboard
+            </button>
+            <button
+                onClick={() => setActiveTab('create-exam')}
+                className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${activeTab === 'create-exam' ? 'bg-cyan-900/20 text-cyan-400 border border-cyan-800' : 'text-gray-400 hover:bg-gray-800 hover:text-white'}`}
+            >
+                <FilePlus className="w-5 h-5" /> Create Exam
+            </button>
+            <button
+                onClick={() => setActiveTab('students')}
+                className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${activeTab === 'students' ? 'bg-cyan-900/20 text-cyan-400 border border-cyan-800' : 'text-gray-400 hover:bg-gray-800 hover:text-white'}`}
+            >
+                <Users className="w-5 h-5" /> Students
+            </button>
+            <button
+                onClick={() => setActiveTab('monitoring')}
+                className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${activeTab === 'monitoring' ? 'bg-cyan-900/20 text-cyan-400 border border-cyan-800' : 'text-gray-400 hover:bg-gray-800 hover:text-white'}`}
+            >
+                <Eye className="w-5 h-5" /> Live Monitoring
+            </button>
+            <button
+                onClick={() => setActiveTab('results')}
+                className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${activeTab === 'results' ? 'bg-cyan-900/20 text-cyan-400 border border-cyan-800' : 'text-gray-400 hover:bg-gray-800 hover:text-white'}`}
+            >
+                <Award className="w-5 h-5" /> Results
+            </button>
+            <button
+                onClick={() => setActiveTab('settings')}
+                className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${activeTab === 'settings' ? 'bg-cyan-900/20 text-cyan-400 border border-cyan-800' : 'text-gray-400 hover:bg-gray-800 hover:text-white'}`}
+            >
+                <Settings className="w-5 h-5" /> Settings
+            </button>
+        </nav>
+
+        <div className="p-4 border-t border-gray-800">
+            <button
+                onClick={handleLogout}
+                className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-red-400 hover:bg-red-900/20 border border-transparent hover:border-red-900 transition-all"
+            >
+                <LogOut className="w-5 h-5" /> Logout
+            </button>
+        </div>
+    </div>
+);
+
+const StudentManagement = ({ students, setStudents, exams, onDelete, notify, confirmAction, fetchStudents }) => { // Added fetchStudents
+    const [view, setView] = useState('list-exams');
+    const [selectedExam, setSelectedExam] = useState(null);
+    const [examStudents, setExamStudents] = useState([]);
+
+    // Form States
+    const [newName, setNewName] = useState('');
+    const [newEmail, setNewEmail] = useState('');
+    const [bulkData, setBulkData] = useState('');
+
+    // Fetch students for selected exam
+    useEffect(() => {
+        if (selectedExam) {
+            fetchExamStudents(selectedExam._id);
+        }
+    }, [selectedExam]);
+
+    const fetchExamStudents = async (examId) => {
+        try {
+            const res = await fetch(`${API_BASE_URL}/students/exam/${examId}`);
+            const data = await res.json();
+            if (data.success) setExamStudents(data.students);
+        } catch (err) {
+            console.error(err);
+            notify('Failed to load students', 'error');
+        }
+    };
+
+    const handleExamClick = (exam) => {
+        setSelectedExam(exam);
+        setView('manage-students');
+    };
+
+    const generateId = () => {
+        if (!selectedExam) return '';
+        const year = new Date().getFullYear();
+        const prefix = selectedExam.title
+            .split(' ')
+            .map(word => word[0])
+            .join('')
+            .toUpperCase()
+            .substring(0, 4);
+        const random = Math.floor(1000 + Math.random() * 9000);
+        return `${year}${prefix}${random}`;
+    };
+
+    const handleSingleRegister = async (e) => {
+        e.preventDefault();
+        if (!newName || !newEmail) {
+            notify('Please fill all fields', 'error');
+            return;
+        }
+        try {
+            const res = await fetch(`${API_BASE_URL}/students/assign`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    examId: selectedExam._id,
+                    students: [{ name: newName, email: newEmail }]
+                })
+            });
+            const data = await res.json();
+            if (data.success) {
+                notify(`Student registered successfully!`);
+                setNewName('');
+                setNewEmail('');
+                fetchExamStudents(selectedExam._id);
+                fetchStudents(); // Refresh dashboard stats
+            } else {
+                notify(data.error, 'error');
+            }
+        } catch (err) {
+            console.error(err);
+            notify('Registration failed', 'error');
+        }
+    };
+
+    const registerBatch = async (studentsList) => {
+        try {
+            const res = await fetch(`${API_BASE_URL}/students/assign`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    examId: selectedExam._id,
+                    students: studentsList
+                })
+            });
+            const data = await res.json();
+            if (data.success) {
+                notify(`Successfully registered ${data.count} students!`);
+                setBulkData('');
+                fetchExamStudents(selectedExam._id);
+                fetchStudents(); // Refresh dashboard stats
+            } else {
+                notify(data.error || 'Failed to register students', 'error');
+            }
+        } catch (err) {
+            console.error(err);
+            notify('Bulk registration failed', 'error');
+        }
+    };
+
+    const handleBulkRegister = () => {
+        if (!bulkData) {
+            notify('Please paste some data', 'error');
+            return;
+        }
+        const lines = bulkData.split('\n');
+        const formattedData = lines.map(line => {
+            const parts = line.split(',');
+            if (parts.length >= 2) {
+                return { name: parts[0].trim(), email: parts[1].trim() };
+            }
+            return null;
+        }).filter(Boolean);
+
+        if (formattedData.length === 0) {
+            notify('Invalid format. Use: Name, Email', 'error');
+            return;
+        }
+
+        confirmAction(
+            'Confirm Registration',
+            `Ready to register ${formattedData.length} students. Proceed?`,
+            () => registerBatch(formattedData),
+            'info'
+        );
+    };
+
+    const handleFileUpload = (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = (evt) => {
+            try {
+                const bstr = evt.target.result;
+                const wb = XLSX.read(bstr, { type: 'binary' });
+                const wsname = wb.SheetNames[0];
+                const ws = wb.Sheets[wsname];
+                const data = XLSX.utils.sheet_to_json(ws);
+
+                // Expected columns: Name, Email (case insensitive)
+                const formattedData = data.map(row => {
+                    const name = row.Name || row.name || row.NAME;
+                    const email = row.Email || row.email || row.EMAIL;
+                    if (name && email) return { name, email };
+                    return null;
+                }).filter(Boolean);
+
+                if (formattedData.length === 0) {
+                    notify('Could not find valid data. Ensure columns are "Name" and "Email".', 'error');
+                    return;
+                }
+
+                confirmAction(
+                    'Excel Import',
+                    `Found ${formattedData.length} students in file. Register them?`,
+                    () => registerBatch(formattedData),
+                    'info'
+                );
+            } catch (err) {
+                console.error(err);
+                notify('Error reading Excel file', 'error');
+            }
+        };
+        reader.readAsBinaryString(file);
+    };
+
+    const downloadTemplate = () => {
+        try {
+            const ws = XLSX.utils.json_to_sheet([
+                { Name: 'John Doe', Email: 'john@example.com' },
+                { Name: 'Jane Smith', Email: 'jane@example.com' }
+            ]);
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, "Students");
+            XLSX.writeFile(wb, "Student_Registration_Template.xlsx");
+            notify('Template download started');
+        } catch (err) {
+            notify('Download failed', 'error');
+        }
+    };
+
+    const handleResendCredentials = async (studentId) => {
+        try {
+            const res = await fetch(`${API_BASE_URL}/students/send-credentials`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ studentId, examId: selectedExam._id })
+            });
+            const data = await res.json();
+            if (data.success) notify('Credentials sent successfully!');
+            else notify(data.error || 'Failed to send email', 'error');
+        } catch (err) {
+            console.error(err);
+            notify('Failed to send email', 'error');
+        }
+    };
+
+    const handleBulkResendCredentials = async () => {
+        confirmAction(
+            'Resend Credentials',
+            `Resend credentials to all ${examStudents.length} registered students ? This will trigger ${examStudents.length} emails.`,
+            async () => {
+                let count = 0;
+                for (const s of examStudents) {
+                    try {
+                        await fetch(`${API_BASE_URL}/students/send-credentials`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ studentId: s._id, examId: selectedExam._id })
+                        });
+                        count++;
+                    } catch (e) {
+                        console.error(e);
+                    }
+                }
+                notify(`Emails triggered for ${count} students`);
+            },
+            'info'
+        );
+    };
+
+    if (view === 'list-exams') {
+        return (
+            <div className="flex-1 overflow-y-auto p-8">
+                <h2 className="text-2xl font-bold mb-8">Select Exam to Manage Students</h2>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {exams.map(exam => (
+                        <div key={exam._id} onClick={() => handleExamClick(exam)} className="bg-gray-800 border border-gray-700 hover:border-cyan-500 rounded-xl p-6 cursor-pointer transition-all hover:bg-gray-700/50 group">
+                            <h3 className="text-xl font-bold group-hover:text-cyan-400 mb-2">{exam.title}</h3>
+                            <div className="text-sm text-gray-400 mb-4 font-mono">{exam.code}</div>
+                            <div className="flex justify-between items-center text-sm text-gray-500">
+                                <span>{exam.duration} mins</span>
+                                <span>Manage Students &rarr;</span>
+                            </div>
+                        </div>
+                    ))}
+                    {exams.length === 0 && <div className="text-gray-500">No exams created yet.</div>}
+                </div>
+            </div>
+        );
+    }
+
+    return (
+        <div className="flex-1 overflow-y-auto p-8">
+            <button onClick={() => setView('list-exams')} className="text-gray-400 hover:text-white mb-6 flex items-center gap-2">&larr; Back to Exams</button>
+            <h2 className="text-2xl font-bold mb-2">Manage Students for: <span className="text-cyan-400">{selectedExam.title}</span></h2>
+            <p className="text-gray-500 mb-8 border-b border-gray-700 pb-4">Exam Code: {selectedExam.code}</p>
+
+            <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
+                <div className="space-y-8">
+                    {/* Add Single */}
+                    <div className="bg-gray-800 border border-gray-700 rounded-xl p-6">
+                        <h3 className="text-lg font-bold mb-4 flex items-center gap-2">
+                            <Plus className="w-5 h-5 text-green-400" /> Register Single Student
+                        </h3>
+                        <form onSubmit={handleSingleRegister} className="space-y-4">
+                            <div>
+                                <label className="text-sm font-medium text-gray-400 mb-1 block">Full Name</label>
+                                <input type="text" required value={newName} onChange={(e) => setNewName(e.target.value)} placeholder="e.g., Aditi Rao" className="w-full bg-gray-900 border border-gray-700 rounded-lg p-3 focus:border-cyan-500 outline-none" />
+                            </div>
+                            <div>
+                                <label className="text-sm font-medium text-gray-400 mb-1 block">Email Address</label>
+                                <input type="email" required value={newEmail} onChange={(e) => setNewEmail(e.target.value)} placeholder="student@university.edu" className="w-full bg-gray-900 border border-gray-700 rounded-lg p-3 focus:border-cyan-500 outline-none" />
+                            </div>
+                            <button type="submit" className="w-full py-3 bg-green-600 hover:bg-green-700 text-white font-bold rounded-lg transition-all">Add to Exam</button>
+                        </form>
+                    </div>
+
+                    {/* Bulk Upload */}
+                    <div className="bg-gray-800 border border-gray-700 rounded-xl p-6">
+                        <h3 className="text-lg font-bold mb-4 flex items-center gap-2">
+                            <FilePlus className="w-5 h-5 text-blue-400" /> Bulk Register
+                        </h3>
+
+                        <div className="space-y-4">
+                            {/* Excel Upload Option */}
+                            <div className="p-4 bg-gray-900/50 border border-dashed border-gray-700 rounded-lg">
+                                <label className="flex flex-col items-center justify-center cursor-pointer group">
+                                    <FileSpreadsheet className="w-8 h-8 text-gray-500 group-hover:text-cyan-400 mb-2 transition-colors" />
+                                    <span className="text-sm font-medium text-gray-400 group-hover:text-white transition-colors">Upload Excel Sheet</span>
+                                    <input type="file" className="hidden" accept=".xlsx, .xls, .csv" onChange={handleFileUpload} />
+                                </label>
+                                <div className="mt-3 flex justify-between items-center text-[11px]">
+                                    <span className="text-gray-500 italic">Format: Name, Email columns</span>
+                                    <button onClick={downloadTemplate} className="text-cyan-500 hover:text-cyan-400 flex items-center gap-1 font-bold">
+                                        <Download className="w-3 h-3" /> Get Template
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div className="relative">
+                                <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-gray-700"></div></div>
+                                <div className="relative flex justify-center text-xs uppercase"><span className="bg-gray-800 px-2 text-gray-500 font-bold tracking-widest">OR PASTE</span></div>
+                            </div>
+
+                            <div>
+                                <div className="text-[11px] text-gray-500 mb-2 uppercase tracking-wider">Paste (Name, Email) per line:</div>
+                                <textarea
+                                    value={bulkData}
+                                    onChange={(e) => setBulkData(e.target.value)}
+                                    placeholder="John Doe, john@example.com&#10;Jane Smith, jane@example.com"
+                                    className="w-full h-24 bg-gray-900 border border-gray-700 rounded-lg p-3 text-xs font-mono focus:border-cyan-500 outline-none mb-3"
+                                ></textarea>
+                                <button onClick={handleBulkRegister} className="w-full py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold rounded-lg transition-all shadow-lg hover:shadow-blue-500/20">Register from Text</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div className="xl:col-span-2 bg-gray-800 border border-gray-700 rounded-xl overflow-hidden flex flex-col h-fit">
+                    <div className="p-6 border-b border-gray-700 flex justify-between items-center bg-gray-900/30">
+                        <h3 className="font-bold">Registered for this Exam ({examStudents.length})</h3>
+                        {examStudents.length > 0 && (
+                            <button
+                                onClick={handleBulkResendCredentials}
+                                className="text-xs bg-cyan-600 hover:bg-cyan-700 px-3 py-1.5 rounded font-bold flex items-center gap-1.5 transition-all"
+                            >
+                                <Upload className="w-3 h-3 rotate-180" /> Email All
+                            </button>
+                        )}
+                    </div>
+                    <div className="overflow-x-auto">
+                        <table className="w-full text-left">
+                            <thead className="bg-gray-900/50 text-gray-400 text-xs uppercase font-semibold">
+                                <tr>
+                                    <th className="p-4">ID</th>
+                                    <th className="p-4">Name</th>
+                                    <th className="p-4">Email</th>
+                                    <th className="p-4">Action</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-gray-700">
+                                {examStudents.length === 0 && <tr><td colSpan="4" className="p-8 text-center text-gray-500">No students registered yet.</td></tr>}
+                                {examStudents.map((student) => (
+                                    <tr key={student._id} className="hover:bg-gray-700/30">
+                                        <td className="p-4 font-mono font-bold text-cyan-400">{student.studentId}</td>
+                                        <td className="p-4 font-medium">{student.name}</td>
+                                        <td className="p-4 text-gray-400">{student.email}</td>
+                                        <td className="p-4 flex gap-2">
+                                            <button className="text-gray-400 hover:text-white text-xs border border-gray-700 px-2 py-1 rounded" onClick={() => { navigator.clipboard.writeText(student.studentId); notify('ID Copied!'); }}>Copy ID</button>
+                                            <button
+                                                className="text-cyan-400 hover:text-cyan-300 text-xs border border-cyan-900/30 bg-cyan-900/10 px-2 py-1 rounded"
+                                                onClick={() => handleResendCredentials(student._id)}
+                                            >
+                                                Email
+                                            </button>
+                                            <button
+                                                onClick={() => onDelete(student._id)}
+                                                className="text-red-500 hover:text-red-400 transition-colors p-1"
+                                                title="Delete Student"
+                                            >
+                                                <Trash2 className="w-4 h-4" />
+                                            </button>
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+};
+
+const CreateExam = ({ setExams, setActiveTab, notify }) => {
+    const [examTitle, setExamTitle] = useState('');
+    const [sections, setSections] = useState([
+        { title: 'Quants', duration: 30, questions: [] },
+        { title: 'Verbal', duration: 30, questions: [] },
+        { title: 'Reasoning', duration: 30, questions: [] }
+    ]);
+    const [activeSectionIndex, setActiveSectionIndex] = useState(0);
+
+    // Question Form States
+    const [qText, setQText] = useState('');
+    const [qOptions, setQOptions] = useState(['', '', '', '']);
+    const [qCorrect, setQCorrect] = useState(0);
+
+    const handleAddQuestion = () => {
+        if (!qText || qOptions.some(o => !o)) {
+            notify('Please complete the question and all options', 'error');
+            return;
+        }
+
+        const newSections = [...sections];
+        newSections[activeSectionIndex].questions.push({
+            questionText: qText,
+            options: qOptions,
+            correctOption: parseInt(qCorrect)
+        });
+
+        setSections(newSections);
+        setQText('');
+        setQOptions(['', '', '', '']);
+        setQCorrect(0);
+    };
+
+    const handleSectionDurationChange = (index, value) => {
+        const newSections = [...sections];
+        newSections[index].duration = parseInt(value || 0);
+        setSections(newSections);
+    };
+
+    const handleSectionTitleChange = (index, value) => {
+        const newSections = [...sections];
+        newSections[index].title = value;
+        setSections(newSections);
+    };
+
+    const handleAddSection = () => {
+        setSections([...sections, { title: 'New Section', duration: 30, questions: [] }]);
+    };
+
+    const handleRemoveSection = (index) => {
+        if (sections.length === 1) {
+            notify('Cannot remove the last section.', 'error');
+            return;
+        }
+        const newSections = sections.filter((_, i) => i !== index);
+        setSections(newSections);
+        if (activeSectionIndex >= newSections.length) setActiveSectionIndex(newSections.length - 1);
+    };
+
+    const handleSaveExam = async () => {
+        const totalDuration = sections.reduce((acc, s) => acc + s.duration, 0);
+
+        if (!examTitle || totalDuration <= 0 || sections.some(s => s.questions.length === 0)) {
+            notify('Please fill title, valid duration for all sections, and ensure each section has at least one question', 'error');
+            return;
+        }
+
+        try {
+            const res = await fetch(`${API_BASE_URL}/exams`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    title: examTitle,
+                    duration: totalDuration,
+                    sections: sections
+                })
+            });
+            const data = await res.json();
+            if (data.success) {
+                setExams(prev => [...prev, data.exam]);
+                notify('Exam Created Successfully!');
+                setActiveTab('dashboard');
+            } else {
+                notify(data.error, 'error');
+            }
+        } catch (err) {
+            console.error(err);
+            notify('Failed to create exam. Please try again.', 'error');
+        }
+    };
+
+    return (
+        <div className="flex-1 p-8 overflow-y-auto">
+            <div className="max-w-4xl mx-auto">
+                <div className="flex justify-between items-center mb-8">
+                    <h2 className="text-2xl font-bold">Create Multi-Section Exam</h2>
+                    <button onClick={handleSaveExam} className="flex items-center gap-2 px-6 py-2 bg-green-600 hover:bg-green-700 rounded-lg font-bold transition-all"><Save className="w-4 h-4" /> Save Exam</button>
+                </div>
+
+                <div className="mb-8">
+                    <label className="text-sm font-medium text-gray-400 mb-1 block">Exam Title</label>
+                    <input type="text" value={examTitle} onChange={(e) => setExamTitle(e.target.value)} placeholder="e.g. Placement Assessment 2024" className="w-full bg-gray-800 border border-gray-700 rounded-lg p-3 text-white outline-none focus:border-cyan-500" />
+                </div>
+
+                <div className="space-y-4 mb-8">
+                    <div className="flex justify-between items-center">
+                        <h3 className="font-bold text-lg">Sections</h3>
+                        <button onClick={handleAddSection} className="text-sm bg-gray-700 hover:bg-gray-600 px-3 py-1 rounded flex items-center gap-1"><Plus className="w-4 h-4" /> Add Section</button>
+                    </div>
+                    {sections.map((section, idx) => (
+                        <div key={idx} className={`p-4 rounded-xl border transition-all ${idx === activeSectionIndex ? 'bg-cyan-900/10 border-cyan-500/50' : 'bg-gray-800/40 border-gray-700'}`}>
+                            <div className="grid grid-cols-12 gap-4 items-center">
+                                <div className="col-span-1">
+                                    <span className="text-gray-500 font-mono">#{idx + 1}</span>
+                                </div>
+                                <div className="col-span-5">
+                                    <input
+                                        type="text"
+                                        value={section.title}
+                                        onChange={(e) => handleSectionTitleChange(idx, e.target.value)}
+                                        className="w-full bg-transparent border-b border-gray-600 focus:border-cyan-500 outline-none p-1 font-bold"
+                                    />
+                                </div>
+                                <div className="col-span-3">
+                                    <div className="flex items-center gap-2">
+                                        <input
+                                            type="number"
+                                            value={section.duration}
+                                            onChange={(e) => handleSectionDurationChange(idx, e.target.value)}
+                                            className="w-16 bg-gray-900 border border-gray-600 rounded p-1 text-center font-mono"
+                                        />
+                                        <span className="text-xs text-gray-500 uppercase">Mins</span>
+                                    </div>
+                                </div>
+                                <div className="col-span-3 flex justify-end gap-2">
+                                    <button
+                                        onClick={() => setActiveSectionIndex(idx)}
+                                        className={`px-3 py-1 rounded text-xs font-bold ${idx === activeSectionIndex ? 'bg-cyan-500 text-white' : 'bg-gray-700 text-gray-400'}`}
+                                    >
+                                        Edit Qs ({section.questions.length})
+                                    </button>
+                                    <button onClick={() => handleRemoveSection(idx)} className="text-red-500 hover:bg-red-500/10 p-1 rounded"><Trash2 className="w-4 h-4" /></button>
+                                </div>
+                            </div>
+                        </div>
+                    ))}
+                </div>
+
+                {/* Question Builder for Active Section */}
+                <div className="bg-gray-800 p-6 rounded-xl border border-gray-700 mb-8">
+                    <h3 className="font-bold mb-4 flex items-center gap-2 text-cyan-400">
+                        Add Question to <span className="uppercase">{sections[activeSectionIndex].title}</span>
+                    </h3>
+                    <input type="text" value={qText} onChange={(e) => setQText(e.target.value)} placeholder="Question Text" className="w-full bg-gray-900 border border-gray-700 rounded-lg p-3 mb-4 text-white outline-none focus:border-cyan-500" />
+
+                    <div className="grid grid-cols-2 gap-4 mb-4">
+                        {qOptions.map((opt, idx) => (
+                            <input
+                                key={idx}
+                                type="text"
+                                value={opt}
+                                onChange={(e) => {
+                                    const newOpts = [...qOptions];
+                                    newOpts[idx] = e.target.value;
+                                    setQOptions(newOpts);
+                                }}
+                                placeholder={`Option ${idx + 1} `}
+                                className="w-full bg-gray-900 border border-gray-700 rounded-lg p-3 text-white outline-none focus:border-cyan-500"
+                            />
+                        ))}
+                    </div>
+
+                    <div className="flex items-center gap-4 mb-4">
+                        <span className="text-sm text-gray-400">Correct Option:</span>
+                        <div className="flex gap-2">
+                            {qOptions.map((_, i) => (
+                                <button
+                                    key={i}
+                                    type="button"
+                                    onClick={() => setQCorrect(i)}
+                                    className={`w-10 h-10 rounded-lg font-bold border ${qCorrect === i ? 'bg-cyan-500 border-cyan-400' : 'bg-gray-900 border-gray-700 text-gray-500'}`}
+                                >
+                                    {i + 1}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+
+                    <button onClick={handleAddQuestion} className="w-full py-3 bg-cyan-600 hover:bg-cyan-700 rounded-lg font-bold transition-all shadow-lg hover:shadow-cyan-500/20">Add Question to Section</button>
+                </div>
+
+                <div className="space-y-4">
+                    <h3 className="font-bold">Total Questions in {sections[activeSectionIndex].title}: {sections[activeSectionIndex].questions.length}</h3>
+                    {sections[activeSectionIndex].questions.map((q, i) => (
+                        <div key={i} className="bg-gray-900/50 p-4 rounded-lg border border-gray-800 flex justify-between items-center group">
+                            <div>
+                                <span className="text-gray-500 mr-2">{i + 1}.</span>
+                                <span className="font-medium">{q.questionText}</span>
+                            </div>
+                            <button
+                                onClick={() => {
+                                    const newSections = [...sections];
+                                    newSections[activeSectionIndex].questions.splice(i, 1);
+                                    setSections(newSections);
+                                }}
+                                className="opacity-0 group-hover:opacity-100 text-red-500 transition-opacity"
+                            >
+                                <Trash2 className="w-4 h-4" />
+                            </button>
+                        </div>
+                    ))}
+                </div>
+            </div>
+        </div>
+    );
+};
+
+const QuestionManagement = ({ exam, onBack, onUpdate, notify }) => {
+    const [examTitle, setExamTitle] = useState(exam.title);
+    const [sections, setSections] = useState(exam.sections || []);
+    const [activeSectionIndex, setActiveSectionIndex] = useState(0);
+
+    // Question Form States
+    const [qText, setQText] = useState('');
+    const [qOptions, setQOptions] = useState(['', '', '', '']);
+    const [qCorrect, setQCorrect] = useState(0);
+    const [editingIndex, setEditingIndex] = useState(null);
+
+    const handleAddQuestion = () => {
+        if (!qText || qOptions.some(o => !o)) {
+            notify('Please complete the question and all options', 'error');
+            return;
+        }
+
+        const newSections = [...sections];
+        const questionData = {
+            questionText: qText,
+            options: qOptions,
+            correctOption: parseInt(qCorrect)
+        };
+
+        if (editingIndex !== null) {
+            newSections[activeSectionIndex].questions[editingIndex] = questionData;
+            setEditingIndex(null);
+        } else {
+            newSections[activeSectionIndex].questions.push(questionData);
+        }
+
+        setSections(newSections);
+        setQText('');
+        setQOptions(['', '', '', '']);
+        setQCorrect(0);
+    };
+
+    const handleEditQuestion = (idx) => {
+        const q = sections[activeSectionIndex].questions[idx];
+        setQText(q.questionText);
+        setQOptions([...q.options]);
+        setQCorrect(q.correctOption);
+        setEditingIndex(idx);
+    };
+
+    const handleSaveExam = async () => {
+        const totalDuration = sections.reduce((acc, s) => acc + s.duration, 0);
+
+        if (!examTitle || totalDuration <= 0 || sections.some(s => s.questions.length === 0)) {
+            notify('Please fill title, valid duration for all sections, and ensure each section has at least one question', 'error');
+            return;
+        }
+
+        try {
+            const res = await fetch(`${API_BASE_URL}/exams/${exam._id}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    title: examTitle,
+                    duration: totalDuration,
+                    sections: sections
+                })
+            });
+            const data = await res.json();
+            if (data.success) {
+                notify('Exam Updated Successfully!');
+                onUpdate(data.exam);
+                onBack();
+            } else {
+                notify(data.error, 'error');
+            }
+        } catch (err) {
+            console.error(err);
+            notify('Failed to update exam. Please try again.', 'error');
+        }
+    };
+
+    const handleSectionDurationChange = (index, value) => {
+        const newSections = [...sections];
+        newSections[index].duration = parseInt(value || 0);
+        setSections(newSections);
+    };
+
+    const handleSectionTitleChange = (index, value) => {
+        const newSections = [...sections];
+        newSections[index].title = value;
+        setSections(newSections);
+    };
+
+    const handleAddSection = () => {
+        setSections([...sections, { title: 'New Section', duration: 30, questions: [] }]);
+    };
+
+    const handleRemoveSection = (index) => {
+        if (sections.length === 1) {
+            notify('Cannot remove the last section.', 'error');
+            return;
+        }
+        const newSections = sections.filter((_, i) => i !== index);
+        setSections(newSections);
+        if (activeSectionIndex >= newSections.length) setActiveSectionIndex(newSections.length - 1);
+    };
+
+    return (
+        <div className="flex-1 p-8 overflow-y-auto">
+            <div className="max-w-4xl mx-auto">
+                <button onClick={onBack} className="text-gray-400 hover:text-white mb-6 flex items-center gap-2">&larr; Back to Dashboard</button>
+
+                <div className="flex justify-between items-center mb-8">
+                    <h2 className="text-2xl font-bold flex items-center gap-2">
+                        <FileText className="text-cyan-400" /> Manage Questions: <span className="text-cyan-400">{exam.title}</span>
+                    </h2>
+                    <button onClick={handleSaveExam} className="flex items-center gap-2 px-6 py-2 bg-green-600 hover:bg-green-700 rounded-lg font-bold transition-all shadow-lg shadow-green-900/20">
+                        <Save className="w-4 h-4" /> Save Changes
+                    </button>
+                </div>
+
+                <div className="mb-8">
+                    <label className="text-sm font-medium text-gray-400 mb-1 block">Exam Title</label>
+                    <input type="text" value={examTitle} onChange={(e) => setExamTitle(e.target.value)} className="w-full bg-gray-800 border border-gray-700 rounded-lg p-3 text-white outline-none focus:border-cyan-500" />
+                </div>
+
+                <div className="space-y-4 mb-8">
+                    <div className="flex justify-between items-center">
+                        <h3 className="font-bold text-lg">Sections</h3>
+                        <button onClick={handleAddSection} className="text-sm bg-gray-700 hover:bg-gray-600 px-3 py-1 rounded flex items-center gap-1"><Plus className="w-4 h-4" /> Add Section</button>
+                    </div>
+                    {sections.map((section, idx) => (
+                        <div key={idx} className={`p-4 rounded-xl border transition-all ${idx === activeSectionIndex ? 'bg-cyan-900/10 border-cyan-500/50' : 'bg-gray-800/40 border-gray-700'}`}>
+                            <div className="grid grid-cols-12 gap-4 items-center">
+                                <div className="col-span-1">
+                                    <span className="text-gray-500 font-mono">#{idx + 1}</span>
+                                </div>
+                                <div className="col-span-5">
+                                    <input
+                                        type="text"
+                                        value={section.title}
+                                        onChange={(e) => handleSectionTitleChange(idx, e.target.value)}
+                                        className="w-full bg-transparent border-b border-gray-600 focus:border-cyan-500 outline-none p-1 font-bold"
+                                    />
+                                </div>
+                                <div className="col-span-3">
+                                    <div className="flex items-center gap-2">
+                                        <input
+                                            type="number"
+                                            value={section.duration}
+                                            onChange={(e) => handleSectionDurationChange(idx, e.target.value)}
+                                            className="w-16 bg-gray-900 border border-gray-600 rounded p-1 text-center font-mono"
+                                        />
+                                        <span className="text-xs text-gray-500 uppercase">Mins</span>
+                                    </div>
+                                </div>
+                                <div className="col-span-3 flex justify-end gap-2">
+                                    <button
+                                        onClick={() => setActiveSectionIndex(idx)}
+                                        className={`px - 3 py - 1 rounded text - xs font - bold ${idx === activeSectionIndex ? 'bg-cyan-500 text-white' : 'bg-gray-700 text-gray-400'} `}
+                                    >
+                                        Edit Qs ({section.questions.length})
+                                    </button>
+                                    <button onClick={() => handleRemoveSection(idx)} className="text-red-500 hover:bg-red-500/10 p-1 rounded"><Trash2 className="w-4 h-4" /></button>
+                                </div>
+                            </div>
+                        </div>
+                    ))}
+                </div>
+
+                {/* Question Builder for Active Section */}
+                <div className="bg-gray-800 p-6 rounded-xl border border-gray-700 mb-8 overflow-hidden">
+                    <h3 className="font-bold mb-4 flex items-center justify-between text-cyan-400">
+                        <span>{editingIndex !== null ? 'Edit Question' : 'Add Question'} to <span className="uppercase">{sections[activeSectionIndex]?.title}</span></span>
+                        {editingIndex !== null && <button onClick={() => { setEditingIndex(null); setQText(''); setQOptions(['', '', '', '']); setQCorrect(0); }} className="text-xs text-gray-400 hover:text-white underline">Cancel Edit</button>}
+                    </h3>
+                    <input type="text" value={qText} onChange={(e) => setQText(e.target.value)} placeholder="Question Text" className="w-full bg-gray-900 border border-gray-700 rounded-lg p-3 mb-4 text-white outline-none focus:border-cyan-500" />
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                        {qOptions.map((opt, idx) => (
+                            <input
+                                key={idx}
+                                type="text"
+                                value={opt}
+                                onChange={(e) => {
+                                    const newOpts = [...qOptions];
+                                    newOpts[idx] = e.target.value;
+                                    setQOptions(newOpts);
+                                }}
+                                placeholder={`Option ${idx + 1} `}
+                                className="w-full bg-gray-900 border border-gray-700 rounded-lg p-3 text-white outline-none focus:border-cyan-500"
+                            />
+                        ))}
+                    </div>
+
+                    <div className="flex items-center gap-4 mb-6">
+                        <span className="text-sm text-gray-400 text-nowrap">Correct Option:</span>
+                        <div className="flex gap-2">
+                            {qOptions.map((_, i) => (
+                                <button
+                                    key={i}
+                                    type="button"
+                                    onClick={() => setQCorrect(i)}
+                                    className={`w - 10 h - 10 rounded - lg font - bold border transition - all ${qCorrect === i ? 'bg-cyan-500 border-cyan-400' : 'bg-gray-900 border-gray-700 text-gray-500 hover:border-gray-500'} `}
+                                >
+                                    {i + 1}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+
+                    <button onClick={handleAddQuestion} className="w-full py-3 bg-cyan-600 hover:bg-cyan-700 rounded-lg font-bold transition-all shadow-lg hover:shadow-cyan-500/20">
+                        {editingIndex !== null ? 'Update Question' : 'Add Question to Section'}
+                    </button>
+                </div>
+
+                <div className="space-y-4">
+                    <h3 className="font-bold text-lg">Questions in {sections[activeSectionIndex]?.title} ({sections[activeSectionIndex]?.questions.length})</h3>
+                    {sections[activeSectionIndex]?.questions.map((q, i) => (
+                        <div key={i} className="bg-gray-900/50 p-4 rounded-lg border border-gray-800 flex justify-between items-center group hover:border-gray-600 transition-all">
+                            <div className="flex-1 overflow-hidden pr-4">
+                                <span className="text-gray-500 mr-2 font-mono">{i + 1}.</span>
+                                <span className="font-medium truncate">{q.questionText}</span>
+                                <div className="text-[10px] text-gray-500 mt-1 uppercase tracking-wider">Correct: Option {q.correctOption + 1}</div>
+                            </div>
+                            <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                <button
+                                    onClick={() => handleEditQuestion(i)}
+                                    className="p-2 text-cyan-500 hover:bg-cyan-500/10 rounded-lg"
+                                    title="Edit Question"
+                                >
+                                    <Edit3 className="w-4 h-4" />
+                                </button>
+                                <button
+                                    onClick={() => {
+                                        const newSections = [...sections];
+                                        newSections[activeSectionIndex].questions.splice(i, 1);
+                                        setSections(newSections);
+                                    }}
+                                    className="p-2 text-red-500 hover:bg-red-500/10 rounded-lg"
+                                    title="Delete Question"
+                                >
+                                    <Trash2 className="w-4 h-4" />
+                                </button>
+                            </div>
+                        </div>
+                    ))}
+                    {sections[activeSectionIndex]?.questions.length === 0 && (
+                        <div className="text-center py-8 bg-gray-800/20 rounded-xl border border-dashed border-gray-700 text-gray-500 italic">
+                            No questions added to this section yet.
+                        </div>
+                    )}
+                </div>
+            </div>
+        </div>
+    );
+};
+
+const Monitoring = ({ sessions, setSelectedSessionLog, setActiveTab, onDelete, onDeleteAll, confirmAction }) => (
+    <div className="flex-1 p-8 overflow-y-auto">
+        <div className="flex justify-between items-center mb-6">
+            <h2 className="text-2xl font-bold">Live Monitoring</h2>
+            {sessions.filter(s => s.status === 'in_progress').length > 0 && (
+                <button
+                    onClick={onDeleteAll}
+                    className="flex items-center gap-2 px-4 py-2 bg-red-600/20 text-red-400 hover:bg-red-600 hover:text-white border border-red-900/50 rounded-lg transition-all text-sm font-bold"
+                >
+                    <Trash2 className="w-4 h-4" /> Delete All Sessions
+                </button>
+            )}
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {sessions.filter(s => s.status === 'in_progress').map(session => (
+                <div key={session._id} className="bg-gray-800 border border-gray-700 rounded-xl overflow-hidden hover:border-gray-600 transition-all relative group">
+                    <button
+                        onClick={() => onDelete(session._id)}
+                        className="absolute top-2 left-2 z-10 p-2 bg-red-600/80 text-white rounded-lg opacity-0 group-hover:opacity-100 transition-all hover:bg-red-500 shadow-lg"
+                        title="Delete Session"
+                    >
+                        <Trash2 className="w-4 h-4" />
+                    </button>
+                    <div className="bg-black aspect-video flex items-center justify-center relative">
+                        <Monitor className="text-gray-600 w-12 h-12" />
+                        <div className="absolute top-2 right-2 flex gap-1">
+                            <span className={`px - 2 py - 0.5 rounded text - [10px] font - bold ${session.integrityScore > 80 ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'} `}>
+                                Score: {session.integrityScore}%
+                            </span>
+                        </div>
+                    </div>
+                    <div className="p-4">
+                        <h3 className="font-bold truncate">{session.studentId?.name || 'Unknown Student'}</h3>
+                        <p className="text-xs text-gray-500 mb-4 truncate">{session.examId?.title}</p>
+                        <button onClick={() => { setSelectedSessionLog(session); setActiveTab('view-log'); }} className="w-full py-2 bg-gray-700 hover:bg-gray-600 rounded-lg text-sm transition-all font-medium border border-gray-600 hover:border-gray-500">View Log</button>
+                    </div>
+                </div>
+            ))}
+            {sessions.filter(s => s.status === 'in_progress').length === 0 && (
+                <div className="col-span-1 md:col-span-2 lg:col-span-3 text-center text-gray-500 py-12 bg-gray-800/20 rounded-xl border border-gray-800 border-dashed">
+                    <Eye className="w-8 h-8 mx-auto mb-2 opacity-20" />
+                    <p>No active sessions currently being monitored</p>
+                </div>
+            )}
+        </div>
+    </div>
+);
+
+const Results = ({ sessions, onDelete, onDeleteAll, notify, confirmAction }) => {
+    // Group sessions by exam (only completed/submitted sessions)
+    const groupedSessions = sessions
+        .filter(s => s.status === 'completed' || s.status === 'submitted' || s.score !== undefined)
+        .reduce((acc, session) => {
+            const examTitle = session.examId?.title || 'Unknown Exam';
+            if (!acc[examTitle]) acc[examTitle] = [];
+            acc[examTitle].push(session);
+            return acc;
+        }, {});
+
+    const handleSendEmail = async (sessionId, email) => {
+        try {
+            const res = await fetch(`${API_BASE_URL}/sessions/email-results`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ sessionIds: [sessionId] })
+            });
+            const data = await res.json();
+            if (data.success) notify(`Result email sent to ${email}`);
+            else notify(data.error || 'Failed to send email', 'error');
+        } catch (err) {
+            console.error(err);
+            notify('Failed to send email', 'error');
+        }
+    };
+
+    const handleBulkEmail = async (examTitle, examSessions) => {
+        const sessionIds = examSessions.map(s => s._id);
+        confirmAction(
+            'Confirm Bulk Email',
+            `Send results to all ${sessionIds.length} students for ${examTitle}?`,
+            async () => {
+                try {
+                    const res = await fetch(`${API_BASE_URL}/sessions/email-results`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ sessionIds })
+                    });
+                    const data = await res.json();
+                    if (data.success) notify(`Bulk emails sent successfully!`);
+                    else notify(data.error || 'Failed to send bulk emails', 'error');
+                } catch (err) {
+                    console.error(err);
+                    notify('Failed to send bulk emails', 'error');
+                }
+            },
+            'info'
+        );
+    };
+
+    return (
+        <div className="flex-1 p-8 overflow-y-auto">
+            <div className="flex justify-between items-center mb-6">
+                <h2 className="text-2xl font-bold">Results by Exam</h2>
+                {sessions.length > 0 && (
+                    <button
+                        onClick={onDeleteAll}
+                        className="flex items-center gap-2 px-4 py-2 bg-red-600/20 text-red-400 hover:bg-red-600 hover:text-white border border-red-900/50 rounded-lg transition-all text-sm font-bold"
+                    >
+                        <Trash2 className="w-4 h-4" /> Clear All Results
+                    </button>
+                )}
+            </div>
+
+            {Object.entries(groupedSessions).map(([examTitle, examSessions]) => (
+                <div key={examTitle} className="mb-8 bg-gray-800 border border-gray-700 rounded-xl overflow-hidden">
+                    <div className="bg-gray-900/50 p-4 border-b border-gray-700 flex justify-between items-center">
+                        <h3 className="font-bold text-lg text-cyan-400">{examTitle}</h3>
+                        <button
+                            onClick={() => handleBulkEmail(examTitle, examSessions)}
+                            className="bg-blue-600 hover:bg-blue-700 px-4 py-1.5 rounded text-sm font-bold flex items-center gap-2"
+                        >
+                            <span className="text-xs">✉️</span> Send Bulk Results
+                        </button>
+                    </div>
+                    <table className="w-full text-left">
+                        <thead className="bg-gray-900/30 text-xs uppercase text-gray-400">
+                            <tr>
+                                <th className="p-4">Student</th>
+                                <th className="p-4">Score</th>
+                                <th className="p-4">Integrity</th>
+                                <th className="p-4">Status</th>
+                                <th className="p-4 text-right">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-700">
+                            {examSessions.map(session => (
+                                <tr key={session._id} className="hover:bg-gray-700/30 border-b border-gray-700/50 last:border-0">
+                                    <td className="p-4">
+                                        <div className="font-medium text-white">{session.studentId?.name}</div>
+                                        <div className="text-xs text-gray-500">{session.studentId?.email}</div>
+                                    </td>
+                                    <td className="p-4">
+                                        <div className="font-bold font-mono text-lg text-white">
+                                            {session.score !== undefined ? session.score : '-'}/{session.maxScore || '-'}
+                                        </div>
+                                        {/* Section Breakdown */}
+                                        {session.sectionResults && session.sectionResults.length > 0 && (
+                                            <div className="mt-2 space-y-1">
+                                                {session.sectionResults.map((sec, i) => (
+                                                    <div key={i} className="text-[10px] flex justify-between gap-4 border-t border-gray-700 pt-1">
+                                                        <span className="text-gray-400 uppercase tracking-tighter">{sec.sectionTitle}</span>
+                                                        <span className="text-cyan-400 font-bold">{sec.score}/{sec.maxScore}</span>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        )}
+                                    </td>
+                                    <td className="p-4">
+                                        <span className={`${session.integrityScore > 80 ? 'text-green-400' : 'text-red-400'}`}>
+                                            {session.integrityScore}%
+                                        </span>
+                                    </td>
+                                    <td className="p-4">
+                                        <span className={`px-2 py-1 rounded text-xs border ${session.status === 'completed' ? 'bg-green-500/10 text-green-400 border-green-500/30' : 'bg-blue-500/10 text-blue-400 border-blue-500/30'}`}>
+                                            {session.status}
+                                        </span>
+                                    </td>
+                                    <td className="p-4 text-right flex justify-end gap-3 items-center">
+                                        <button
+                                            onClick={() => handleSendEmail(session._id, session.studentId?.email)}
+                                            className="text-cyan-400 hover:text-cyan-300 text-sm font-medium transition-colors"
+                                        >
+                                            Email Result
+                                        </button>
+                                        <button
+                                            onClick={() => onDelete(session._id)}
+                                            className="text-red-500 hover:text-red-400 transition-colors"
+                                            title="Delete Result"
+                                        >
+                                            <Trash2 className="w-4 h-4" />
+                                        </button>
+                                    </td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </div>
+            ))}
+
+            {Object.keys(groupedSessions).length === 0 && (
+                <div className="text-center text-gray-500 mt-10">No results found.</div>
+            )}
+        </div>
+    );
+};
+
+const ViewLog = ({ selectedSessionLog, setActiveTab }) => {
+    if (!selectedSessionLog) return <div>No session selected</div>;
+    return (
+        <div className="flex-1 p-8">
+            <button onClick={() => setActiveTab('monitoring')} className="mb-4 text-gray-400 hover:text-white">&larr; Back to Monitoring</button>
+            <h2 className="text-2xl font-bold mb-2">Log: {selectedSessionLog.studentId?.name}</h2>
+            <p className="text-gray-500 mb-6">Session ID: {selectedSessionLog._id}</p>
+
+            <div className="grid grid-cols-3 gap-4 mb-6">
+                <div className="bg-gray-800 p-4 rounded-lg border border-gray-700">
+                    <div className="text-gray-400 text-xs uppercase">Integrity Score</div>
+                    <div className="text-2xl font-bold text-white">{selectedSessionLog.integrityScore}%</div>
+                </div>
+                <div className="bg-gray-800 p-4 rounded-lg border border-gray-700">
+                    <div className="text-gray-400 text-xs uppercase">Tab Switches</div>
+                    <div className="text-2xl font-bold text-white">{selectedSessionLog.metrics?.tabSwitchCount || 0}</div>
+                </div>
+                <div className="bg-gray-800 p-4 rounded-lg border border-gray-700">
+                    <div className="text-gray-400 text-xs uppercase">Focus Lost</div>
+                    <div className="text-2xl font-bold text-white">{Math.round(selectedSessionLog.metrics?.totalFocusLostDuration || 0)}s</div>
+                </div>
+            </div>
+
+            <div className="bg-gray-800 border-gray-700 rounded-xl p-6 space-y-4">
+                <h3 className="font-bold mb-4">Event Timeline</h3>
+                {selectedSessionLog.eventLogs && selectedSessionLog.eventLogs.length > 0 ? (
+                    selectedSessionLog.eventLogs.map((log, idx) => (
+                        <div key={idx} className="flex gap-4 border-b border-gray-700 pb-2 last:border-0">
+                            <span className="text-gray-400 text-sm font-mono">{new Date(log.timestamp).toLocaleTimeString()}</span>
+                            <span className={`${log.severity === 'high' ? 'text-red-500' : 'text-yellow-500'} font - bold`}>
+                                {log.eventType.replace('_', ' ')}
+                            </span>
+                        </div>
+                    ))
+                ) : (
+                    <div className="text-gray-500 italic">No suspicious events recorded.</div>
+                )}
+            </div>
+        </div>
+    );
+};
+
+const SettingsPage = () => (
+    <div className="flex-1 p-8">
+        <h2 className="text-2xl font-bold mb-6">Settings</h2>
+        <div className="bg-gray-800 border-gray-700 rounded-xl p-6">
+            <div className="flex items-center justify-between">
+                <span>Enforce Kiosk Mode</span>
+                <div className="w-12 h-6 bg-green-500 rounded-full"></div>
+            </div>
+        </div>
+    </div>
+);
+
+function AdminDashboard() {
+    const navigate = useNavigate();
+    const [activeTab, setActiveTab] = useState('dashboard');
+    const [exams, setExams] = useState([]);
+    const [students, setStudents] = useState([]);
+    const [sessions, setSessions] = useState([]);
+    const [selectedSessionLog, setSelectedSessionLog] = useState(null);
+    const [selectedExamForQuestions, setSelectedExamForQuestions] = useState(null);
+
+    // Custom UI Notification State
+    const [toasts, setToasts] = useState([]);
+    const [confirmModal, setConfirmModal] = useState({ isOpen: false, title: '', message: '', onConfirm: null, type: 'danger' });
+
+    const notify = (message, type = 'success') => {
+        const id = Date.now();
+        setToasts(prev => [...prev, { id, message, type }]);
+        setTimeout(() => setToasts(prev => prev.filter(t => t.id !== id)), 4000);
+    };
+
+    const confirmAction = (title, message, onConfirm, type = 'danger') => {
+        setConfirmModal({
+            isOpen: true,
+            title,
+            message,
+            onConfirm: () => {
+                onConfirm();
+                setConfirmModal(prev => ({ ...prev, isOpen: false }));
+            },
+            type
+        });
+    };
+
+    useEffect(() => {
+        fetchExams();
+        fetchStudents();
+        fetchSessions();
+        const interval = setInterval(fetchSessions, 5000); // Poll every 5 seconds
+        return () => clearInterval(interval);
+    }, []);
+
+    const fetchExams = async () => {
+        try {
+            const res = await fetch(`${API_BASE_URL}/exams`);
+            const data = await res.json();
+            if (data.success) setExams(data.exams);
+        } catch (err) {
+            console.error(err);
+            notify('Failed to load exams', 'error');
+        }
+    };
+
+    const fetchStudents = async () => {
+        try {
+            const res = await fetch(`${API_BASE_URL}/students`);
+            const data = await res.json();
+            if (data.success) setStudents(data.students);
+        } catch (err) {
+            console.error(err);
+            notify('Failed to load students', 'error');
+        }
+    };
+
+    const fetchSessions = async () => {
+        try {
+            const res = await fetch(`${API_BASE_URL}/sessions`);
+            const data = await res.json();
+            if (data.success) {
+                console.log('Active Sessions:', data.sessions.filter(s => s.status === 'in_progress'));
+                setSessions(data.sessions);
+            }
+        } catch (err) {
+            console.error(err);
+            notify('Failed to load sessions', 'error');
+        }
+    };
+
+    const handleDeleteExam = async (id) => {
+        confirmAction(
+            'Delete Exam',
+            'Are you sure you want to delete this exam? All associated student records and sessions will also be removed. This action is irreversible.',
+            async () => {
+                try {
+                    const res = await fetch(`${API_BASE_URL}/exams/${id}`, { method: 'DELETE' });
+                    const data = await res.json();
+                    if (data.success) {
+                        setExams(exams.filter(e => e._id !== id));
+                        fetchStudents();
+                        fetchSessions();
+                        notify('Exam deleted successfully');
+                    } else {
+                        notify(data.error, 'error');
+                    }
+                } catch (err) {
+                    console.error(err);
+                    notify('Failed to delete exam', 'error');
+                }
+            }
+        );
+    };
+
+    const handleDeleteStudent = async (id) => {
+        confirmAction(
+            'Delete Student',
+            'Are you sure you want to delete this student registration? They will no longer have access to the assigned exam.',
+            async () => {
+                try {
+                    const res = await fetch(`${API_BASE_URL}/students/${id}`, { method: 'DELETE' });
+                    const data = await res.json();
+                    if (data.success) {
+                        setStudents(students.filter(s => s._id !== id));
+                        notify('Student record deleted');
+                    } else {
+                        notify(data.error, 'error');
+                    }
+                } catch (err) {
+                    console.error(err);
+                    notify('Failed to delete student', 'error');
+                }
+            }
+        );
+    };
+
+    const handleDeleteSession = async (id) => {
+        confirmAction(
+            'Delete Result',
+            'Are you sure you want to delete this exam result and session log?',
+            async () => {
+                try {
+                    const res = await fetch(`${API_BASE_URL}/sessions/${id}`, { method: 'DELETE' });
+                    const data = await res.json();
+                    if (data.success) {
+                        setSessions(sessions.filter(s => s._id !== id));
+                        notify('Session record deleted');
+                    } else {
+                        notify(data.error, 'error');
+                    }
+                } catch (err) {
+                    console.error(err);
+                    notify('Failed to delete session', 'error');
+                }
+            }
+        );
+    };
+
+    const handleDeleteAllSessions = async () => {
+        confirmAction(
+            'CRITICAL: Clear All Data',
+            'Are you sure you want to delete ALL sessions and results? This will wipe the entire history and cannot be undone.',
+            async () => {
+                try {
+                    const res = await fetch(`${API_BASE_URL}/sessions/all`, { method: 'DELETE' });
+                    const data = await res.json();
+                    if (data.success) {
+                        setSessions([]);
+                        notify('All records cleared successfully');
+                    } else {
+                        notify(data.error, 'error');
+                    }
+                } catch (err) {
+                    console.error(err);
+                    notify('Failed to clear data', 'error');
+                }
+            }
+        );
+    };
+
+    const handleUpdateExam = (updatedExam) => {
+        setExams(exams.map(e => e._id === updatedExam._id ? updatedExam : e));
+    };
+
+    const handleLogout = () => {
+        // Clear auth state
+        localStorage.removeItem('adminAuth');
+
+        // Switch back to locked mode if needed
+        if (window.electronAPI) {
+            window.electronAPI.setExamMode(); // Default back to secure
+        }
+        navigate('/admin/login');
+    };
+
+    return (
+        <div className="flex h-screen bg-[#0f1115] text-white font-sans">
+            <Sidebar activeTab={activeTab} setActiveTab={setActiveTab} handleLogout={handleLogout} />
+            {activeTab === 'dashboard' && (
+                <div className="flex-1 p-8 overflow-y-auto">
+                    <h2 className="text-2xl font-bold mb-6">Dashboard Overview</h2>
+
+                    {/* Stats Grid */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6 mb-8">
+                        <div className="bg-gray-800 border border-gray-700 rounded-xl p-6">
+                            <div className="flex justify-between items-start mb-4">
+                                <div className="p-2 bg-blue-500/20 rounded-lg text-blue-400"><FilePlus className="w-6 h-6" /></div>
+                                <span className="text-xs text-gray-400 bg-gray-900 px-2 py-1 rounded">Total</span>
+                            </div>
+                            <div className="text-3xl font-bold mb-1">{exams.length}</div>
+                            <div className="text-sm text-gray-500">Exams Created</div>
+                        </div>
+                        <div className="bg-gray-800 border border-gray-700 rounded-xl p-6">
+                            <div className="flex justify-between items-start mb-4">
+                                <div className="p-2 bg-purple-500/20 rounded-lg text-purple-400"><Users className="w-6 h-6" /></div>
+                                <span className="text-xs text-gray-400 bg-gray-900 px-2 py-1 rounded">Registered</span>
+                            </div>
+                            <div className="text-3xl font-bold mb-1">{students.length}</div>
+                            <div className="text-sm text-gray-500">Total Candidates</div>
+                        </div>
+                        <div className="bg-gray-800 border border-gray-700 rounded-xl p-6">
+                            <div className="flex justify-between items-start mb-4">
+                                <div className="p-2 bg-green-500/20 rounded-lg text-green-400"><Eye className="w-6 h-6" /></div>
+                                <span className="text-xs text-green-400 bg-green-900/20 px-2 py-1 rounded animate-pulse">Live</span>
+                            </div>
+                            <div className="text-3xl font-bold mb-1">{sessions.filter(s => s.status === 'in_progress').length}</div>
+                            <div className="text-sm text-gray-500">Active Sessions</div>
+                        </div>
+                        <div className="bg-gray-800 border border-gray-700 rounded-xl p-6">
+                            <div className="flex justify-between items-start mb-4">
+                                <div className="p-2 bg-yellow-500/20 rounded-lg text-yellow-400"><Award className="w-6 h-6" /></div>
+                                <span className="text-xs text-gray-400 bg-gray-900 px-2 py-1 rounded">Finished</span>
+                            </div>
+                            <div className="text-3xl font-bold mb-1">{sessions.filter(s => s.status === 'completed').length}</div>
+                            <div className="text-sm text-gray-500">Completed Exams</div>
+                        </div>
+                    </div>
+
+                    {/* Quick Actions */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+                        <div
+                            onClick={() => setActiveTab('create-exam')}
+                            className="bg-gradient-to-r from-blue-600 to-cyan-600 rounded-xl p-6 cursor-pointer hover:shadow-lg hover:shadow-cyan-500/20 transition-all group"
+                        >
+                            <h3 className="text-xl font-bold mb-2 flex items-center gap-2">
+                                <Plus className="w-5 h-5 group-hover:scale-110 transition-transform" /> Create New Exam
+                            </h3>
+                            <p className="text-blue-100 text-sm">Design a new assessment with custom questions and difficulty.</p>
+                        </div>
+                        <div
+                            onClick={() => setActiveTab('monitoring')}
+                            className="bg-gray-800 border border-gray-700 hover:border-cyan-500 rounded-xl p-6 cursor-pointer transition-all group"
+                        >
+                            <h3 className="text-xl font-bold mb-2 flex items-center gap-2 group-hover:text-cyan-400">
+                                <Monitor className="w-5 h-5" /> View Live Monitor
+                            </h3>
+                            <p className="text-gray-400 text-sm">Watch active exam sessions in real-time with AI integrity checks.</p>
+                        </div>
+                    </div>
+
+                    <div className="bg-gray-800 border-gray-700 rounded-xl p-6 mb-8">
+                        <h3 className="font-bold mb-4 text-lg">Your Exam Library</h3>
+                        {exams.length === 0 && <div className="text-gray-500 text-center py-8">No exams created yet.</div>}
+                        {exams.map(exam => (
+                            <div key={exam._id} className="flex items-center justify-between bg-gray-900/50 p-4 rounded-lg mb-2 hover:bg-gray-700/30 transition-colors">
+                                <div>
+                                    <div className="flex items-center gap-3">
+                                        <span className="font-bold text-lg">{exam.title}</span>
+                                        <span className="px-2 py-0.5 rounded text-xs bg-cyan-900/30 text-cyan-400 border border-cyan-800 font-mono">{exam.code}</span>
+                                    </div>
+                                    <span className="text-xs text-gray-500 mt-1 block">
+                                        {exam.sections?.reduce((sum, section) => sum + (section.questions?.length || 0), 0)} Questions • {exam.duration} Minutes Duration
+                                    </span>
+                                </div>
+                                <div className="flex gap-2">
+                                    <button
+                                        onClick={() => {
+                                            setSelectedExamForQuestions(exam);
+                                            setActiveTab('view-questions');
+                                        }}
+                                        className="text-gray-400 hover:text-white px-3 py-1.5 rounded text-sm font-medium border border-gray-700 hover:bg-gray-700 transition-all flex items-center gap-1.5"
+                                    >
+                                        <FileText className="w-3.5 h-3.5" /> View Qs
+                                    </button>
+                                    <button
+                                        onClick={() => setActiveTab('students')}
+                                        className="text-gray-400 hover:text-white px-3 py-1.5 rounded text-sm font-medium border border-gray-700 hover:bg-gray-700 transition-all"
+                                    >
+                                        Manage Students
+                                    </button>
+                                    <button
+                                        onClick={() => {
+                                            navigator.clipboard.writeText(exam.code);
+                                            notify(`Exam Code Copied: ${exam.code}`);
+                                        }}
+                                        className="bg-cyan-600 hover:bg-cyan-700 px-4 py-1.5 rounded text-sm font-bold transition-all shadow-lg shadow-cyan-900/20"
+                                    >
+                                        Copy Code
+                                    </button>
+                                    <button
+                                        onClick={() => handleDeleteExam(exam._id)}
+                                        className="p-2 text-red-500 hover:bg-red-500/10 rounded-lg transition-all"
+                                        title="Delete Exam"
+                                    >
+                                        <Trash2 className="w-5 h-5" />
+                                    </button>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            )}
+            {activeTab === 'create-exam' && <CreateExam setExams={setExams} setActiveTab={setActiveTab} notify={notify} />}
+            {activeTab === 'students' && <StudentManagement students={students} setStudents={setStudents} exams={exams} onDelete={handleDeleteStudent} notify={notify} confirmAction={confirmAction} fetchStudents={fetchStudents} />}
+            {activeTab === 'monitoring' && <Monitoring sessions={sessions} setSelectedSessionLog={setSelectedSessionLog} setActiveTab={setActiveTab} onDelete={handleDeleteSession} onDeleteAll={handleDeleteAllSessions} confirmAction={confirmAction} />}
+            {activeTab === 'view-log' && <ViewLog selectedSessionLog={selectedSessionLog} setActiveTab={setActiveTab} />}
+            {activeTab === 'view-questions' && <QuestionManagement exam={selectedExamForQuestions} onBack={() => { setActiveTab('dashboard'); setSelectedExamForQuestions(null); }} onUpdate={handleUpdateExam} notify={notify} />}
+            {activeTab === 'results' && <Results sessions={sessions} onDelete={handleDeleteSession} onDeleteAll={handleDeleteAllSessions} notify={notify} confirmAction={confirmAction} />}
+            {activeTab === 'settings' && <SettingsPage />}
+
+            {/* Notification Overlays */}
+            <div className="fixed bottom-0 right-0 p-8 space-y-4 pointer-events-none z-[9999]">
+                {toasts.map(toast => (
+                    <div key={toast.id} className="pointer-events-auto">
+                        <Toast
+                            message={toast.message}
+                            type={toast.type}
+                            onClose={() => setToasts(prev => prev.filter(t => t.id !== toast.id))}
+                        />
+                    </div>
+                ))}
+            </div>
+
+            <ConfirmModal
+                isOpen={confirmModal.isOpen}
+                title={confirmModal.title}
+                message={confirmModal.message}
+                type={confirmModal.type}
+                onConfirm={confirmModal.onConfirm}
+                onCancel={() => setConfirmModal(prev => ({ ...prev, isOpen: false }))}
+            />
+        </div>
+    );
+}
+
+export default AdminDashboard;
