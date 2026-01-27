@@ -43,11 +43,17 @@ const NotFound = () => {
                 {/* Actions */}
                 <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
                     <button
-                        onClick={() => navigate('/')}
+                        onClick={() => {
+                            if (window.electronAPI) {
+                                window.electronAPI.quitApp();
+                            } else {
+                                navigate('/');
+                            }
+                        }}
                         className="group relative flex items-center gap-2 bg-white text-black font-bold px-8 py-4 rounded-2xl hover:bg-cyan-500 hover:text-white transition-all active:scale-95 shadow-xl shadow-white/5"
                     >
                         <Home className="w-5 h-5" />
-                        <span>Back to Base</span>
+                        <span>Close Application</span>
                     </button>
 
                     <button

@@ -6,6 +6,15 @@ import { API_BASE_URL } from '../config';
 function LandingPage() {
     const navigate = useNavigate();
 
+    useEffect(() => {
+        // Auto-redirect if session is active or recently submitted
+        const isRegistered = localStorage.getItem('isRegistered') === 'true';
+        const hasSession = localStorage.getItem('sessionId');
+        if (isRegistered && hasSession) {
+            navigate('/exam');
+        }
+    }, [navigate]);
+
     const [examCode, setExamCode] = useState('');
     const [candidateId, setCandidateId] = useState('');
 
@@ -36,14 +45,17 @@ function LandingPage() {
             if (!studentData.success) throw new Error('Student not found');
 
             localStorage.setItem('isRegistered', 'true');
-            if (window.electronAPI) window.electronAPI.setExamMode();
-
-            // Store IDs for the exam session
             localStorage.setItem('examId', examData.exam._id);
-            localStorage.setItem('studentId', studentData.student._id); // This is the mongo _id
+            localStorage.setItem('studentId', studentData.student._id);
             localStorage.setItem('studentName', studentData.student.name);
+            localStorage.removeItem('sessionId'); // Clear old session ID before starting new
 
-            navigate('/exam');
+            if (window.electronAPI) {
+                window.electronAPI.setExamMode();
+                setTimeout(() => navigate('/exam'), 150);
+            } else {
+                navigate('/exam');
+            }
 
         } catch (error) {
             console.error(error);

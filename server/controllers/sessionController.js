@@ -13,6 +13,34 @@ exports.startSession = async (req, res) => {
             });
         }
 
+        // --- DUPLICATE CHECK ---
+        // Check if student already has a session for this exam
+        const existingSession = await ExamSession.findOne({
+            examId,
+            studentId
+        }).sort({ createdAt: -1 });
+
+        if (existingSession) {
+            if (existingSession.status === 'completed' || existingSession.status === 'submitted') {
+                return res.status(400).json({
+                    success: false,
+                    error: 'You have already completed this exam.',
+                    alreadyCompleted: true
+                });
+            }
+
+            if (existingSession.status === 'in_progress') {
+                // Return the existing in-progress session (Resumes on refresh)
+                return res.status(200).json({
+                    success: true,
+                    sessionId: existingSession._id,
+                    message: 'Resuming existing exam session',
+                    resumed: true
+                });
+            }
+        }
+        // -----------------------
+
         const session = new ExamSession({
             examId,
             studentId,

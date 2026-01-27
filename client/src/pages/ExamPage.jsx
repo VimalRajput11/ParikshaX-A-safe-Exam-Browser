@@ -20,7 +20,7 @@ function ExamPage() {
     const [tabSwitches, setTabSwitches] = useState(0);
     const [focusLostTime, setFocusLostTime] = useState(0);
     const [isExamActive, setIsExamActive] = useState(false);
-    const [sessionId, setSessionId] = useState(null);
+    const [sessionId, setSessionId] = useState(localStorage.getItem('sessionId'));
     const [showReport, setShowReport] = useState(false);
     const [finalReport, setFinalReport] = useState(null);
     const [integrityScore, setIntegrityScore] = useState(100);
@@ -30,13 +30,13 @@ function ExamPage() {
     const [cameraConnected, setCameraConnected] = useState(false);
     const [sections, setSections] = useState([]);
     const [currentSectionIndex, setCurrentSectionIndex] = useState(0);
-    const [timeLeft, setTimeLeft] = useState(0); // in seconds
+    const [timeLeft, setTimeLeft] = useState(parseInt(localStorage.getItem('timeLeft') || '0')); // in seconds
     const videoRef = useRef(null);
 
     // Question State
     const [questions, setQuestions] = useState([]);
     const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
-    const [userAnswers, setUserAnswers] = useState({});
+    const [userAnswers, setUserAnswers] = useState(JSON.parse(localStorage.getItem('userAnswers') || '{}'));
 
     const focusLostStartRef = useRef(null);
 
@@ -52,13 +52,23 @@ function ExamPage() {
                         setSections(data.exam.sections);
                         setCurrentSectionIndex(0);
                         setQuestions(data.exam.sections[0].questions);
-                        setTimeLeft(data.exam.sections[0].duration * 60);
+                        // Only set initial time if not resuming
+                        if (!localStorage.getItem('timeLeft')) {
+                            setTimeLeft(data.exam.sections[0].duration * 60);
+                        }
                     } else if (data.exam.questions) {
-                        // Fallback for old exams
                         setQuestions(data.exam.questions);
-                        if (data.exam.duration) {
+                        if (data.exam.duration && !localStorage.getItem('timeLeft')) {
                             setTimeLeft(data.exam.duration * 60);
                         }
+                    }
+
+                    // Auto-resume if session exists
+                    if (localStorage.getItem('sessionId')) {
+                        setShowConsent(false);
+                        setShowInstructions(false);
+                        setIsExamActive(true); // Triggers lockdown if not fullscreen, which is perfect
+                        setConsentGiven(true);
                     }
                 }
             } catch (e) { console.error('Failed to load exam', e); }
@@ -77,20 +87,30 @@ function ExamPage() {
     const startCamera = async () => {
         try {
             if (stream) return;
-            const mediaStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
-            setStream(mediaStream);
-            setCameraConnected(true);
-            if (videoRef.current) {
-                videoRef.current.srcObject = mediaStream;
-                videoRef.current.play().catch(e => console.error(e));
+            // Add a timeout or fallback for systems without a camera
+            const mediaStream = await navigator.mediaDevices.getUserMedia({
+                video: true,
+                audio: true
+            }).catch(async (e) => {
+                console.warn("Camera failed, trying audio only or skipping proctoring:", e);
+                // Return null if no devices found
+                return null;
+            });
+
+            if (mediaStream) {
+                setStream(mediaStream);
+                setCameraConnected(true);
+                if (videoRef.current) {
+                    videoRef.current.srcObject = mediaStream;
+                    videoRef.current.play().catch(e => console.error(e));
+                }
+            } else {
+                // No camera found, but we let them proceed (as requested)
+                setCameraConnected(false);
             }
         } catch (err) {
-            console.error("Camera access denied:", err);
+            console.error("Camera access error:", err);
             setCameraConnected(false);
-            // In Electron, we skip the alert because we handle permissions at the app level
-            if (!window.electronAPI) {
-                alert("Please check your browser camera/microphone permissions.");
-            }
         }
     };
 
@@ -115,7 +135,19 @@ function ExamPage() {
         }
     }, [stream]);
 
-    // Log event to backend
+    useEffect(() => {
+        // Broad focus tracking for browsers (Chrome/Edge/etc)
+        const handleWindowBlur = () => {
+            if (isExamActive) {
+                logEvent('focus_lost', 0, 'medium');
+                addWarning("Warning: You moved away from the exam window! This is being logged.");
+            }
+        };
+
+        window.addEventListener('blur', handleWindowBlur);
+        return () => window.removeEventListener('blur', handleWindowBlur);
+    }, [isExamActive, sessionId]);
+
     const logEvent = async (eventType, duration = 0, severity = 'low') => {
         if (!sessionId) return;
         try {
@@ -216,6 +248,7 @@ function ExamPage() {
                         handleSectionExpiry();
                         return 0;
                     }
+                    localStorage.setItem('timeLeft', prev - 1); // Persist time
                     return prev - 1;
                 });
             }, 1000);
@@ -275,6 +308,7 @@ function ExamPage() {
             const data = await response.json();
             if (data.success) {
                 setSessionId(data.sessionId);
+                localStorage.setItem('sessionId', data.sessionId); // Save for persistence
                 setShowInstructions(true); // Show instructions after session start
             } else {
                 alert('Failed to start session: ' + data.error);
@@ -310,6 +344,7 @@ function ExamPage() {
 
         // If in Electron, it's already in Kiosk/Fullscreen. Proceed regardless of API status.
         if (window.electronAPI) {
+            window.electronAPI.setExamMode();
             proceedToExam();
             return;
         }
@@ -341,6 +376,11 @@ function ExamPage() {
     const confirmAndExit = async () => {
         setShowConfirmModal(false);
         setIsExamActive(false);
+        setIsSubmitted(true); // switch to success screen immediately
+        localStorage.removeItem('sessionId');
+        localStorage.removeItem('isRegistered');
+        localStorage.removeItem('timeLeft');
+        localStorage.removeItem('userAnswers');
 
         if (document.exitFullscreen) {
             try { await document.exitFullscreen(); } catch (e) { }
@@ -358,14 +398,12 @@ function ExamPage() {
                 await fetch(`${API_BASE_URL}/sessions/${sessionId}/end`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ answers: userAnswers }) // Send answers
+                    body: JSON.stringify({ answers: userAnswers })
                 });
             } catch (error) {
                 console.error('Error ending session:', error);
             }
         }
-
-        setIsSubmitted(true); // switch to success screen
     };
 
     // Navigation Handlers
@@ -395,11 +433,52 @@ function ExamPage() {
     };
 
     const handleOptionSelect = (option) => {
-        setUserAnswers(prev => ({
-            ...prev,
-            [MOCK_QUESTIONS[currentQuestionIndex].id]: option
-        }));
+        const updatedAnswers = {
+            ...userAnswers,
+            [questions[currentQuestionIndex]._id || questions[currentQuestionIndex].id]: option
+        };
+        setUserAnswers(updatedAnswers);
+        localStorage.setItem('userAnswers', JSON.stringify(updatedAnswers));
     };
+
+    if (isSubmitted) {
+        return (
+            <div className="min-h-screen bg-[#0f1115] text-white flex flex-col items-center justify-center p-4">
+                <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20 pointer-events-none"></div>
+                <div className="bg-gray-800/50 backdrop-blur-xl p-12 rounded-[40px] shadow-2xl max-w-lg w-full text-center border border-white/5 relative z-10">
+                    <div className="w-24 h-24 bg-green-500/20 rounded-full flex items-center justify-center mx-auto mb-8 animate-pulse">
+                        <CheckCircle className="w-12 h-12 text-green-500" />
+                    </div>
+                    <h1 className="text-4xl font-black mb-4 tracking-tighter">SUCCESSFULLY SUBMITTED</h1>
+                    <p className="text-gray-400 mb-10 text-lg leading-relaxed">
+                        Your assessment responses have been securely encrypted and transmitted to the central server.
+                    </p>
+                    <div className="bg-cyan-500/10 border border-cyan-500/20 text-cyan-400 p-4 rounded-2xl mb-10 text-sm font-bold uppercase tracking-widest">
+                        Integrity Verified: SECURE
+                    </div>
+                    <button
+                        onClick={() => {
+                            if (window.electronAPI) {
+                                window.electronAPI.quitApp();
+                            } else {
+                                // Attempt to close, fallback to blank
+                                window.open('', '_self', '');
+                                window.close();
+                                window.location.href = 'about:blank';
+                            }
+                        }}
+                        className="w-full py-5 rounded-3xl bg-white text-black font-black text-xl hover:bg-cyan-500 hover:text-white transition-all transform active:scale-95 shadow-xl shadow-white/5"
+                    >
+                        Close Browser
+                    </button>
+                    {/* Subtle footer */}
+                    <div className="mt-8 text-[10px] text-gray-600 font-bold tracking-[0.3em] uppercase">
+                        ParikshaX Secure Protocol v1.0
+                    </div>
+                </div>
+            </div>
+        );
+    }
 
     if (questions.length === 0) return <div className="min-h-screen bg-gray-900 text-white flex items-center justify-center">Loading Exam...</div>;
 
@@ -504,7 +583,9 @@ function ExamPage() {
                                 <div className="relative z-10 flex flex-col items-center gap-2">
                                     <Play className="w-12 h-12 text-white fill-white mb-2 group-hover:scale-110 transition-transform" />
                                     <span className="text-2xl font-black text-white uppercase tracking-tighter">Start Assessment</span>
-                                    <span className="text-cyan-200 text-xs font-medium uppercase tracking-widest">Entry to secure mode</span>
+                                    <span className="text-cyan-200 text-xs font-medium uppercase tracking-widest">
+                                        {cameraConnected ? 'Entry to secure mode' : 'Proceeding without Camera'}
+                                    </span>
                                 </div>
                                 <div className="absolute top-0 left-0 w-full h-full bg-gradient-to-br from-white/10 to-transparent pointer-events-none"></div>
                             </button>
@@ -515,42 +596,19 @@ function ExamPage() {
         );
     }
 
-    if (isSubmitted) {
-        return (
-            <div className="min-h-screen bg-gray-900 text-white flex flex-col items-center justify-center p-4">
-                <div className="bg-gray-800 p-8 rounded-2xl shadow-2xl max-w-lg w-full text-center border border-gray-700">
-                    <CheckCircle className="w-24 h-24 text-green-500 mx-auto mb-6" />
-                    <h1 className="text-3xl font-bold mb-4">Exam Submitted Successfully!</h1>
-                    <p className="text-gray-400 mb-8 text-lg">
-                        Thank you for completing the assessment. Your responses have been recorded securely.
-                        <br /><br />
-                        Results and detailed reports will be available on your dashboard shortly.
-                    </p>
-                    <div className="bg-blue-900/20 text-blue-400 p-4 rounded-lg mb-8 text-sm">
-                        You may now safely close this browser window.
-                    </div>
-                    <button
-                        onClick={() => window.close()}
-                        className="w-full py-4 rounded-xl bg-gray-700 hover:bg-gray-600 font-bold transition-all"
-                    >
-                        Close Window
-                    </button>
-                    <button
-                        onClick={() => {
-                            localStorage.removeItem('isRegistered');
-                            window.location.href = '/';
-                        }}
-                        className="mt-4 text-gray-500 hover:text-white text-sm"
-                    >
-                        Return to Home
-                    </button>
-                </div>
-            </div>
-        );
-    }
 
     return (
-        <div className={`min-h-screen ${isFullscreen ? 'bg-black text-white' : 'bg-gray-900 text-white'} font-sans flex flex-col`}>
+        <div
+            className={`min-h-screen ${isFullscreen ? 'bg-black text-white' : 'bg-gray-900 text-white'} font-sans flex flex-col select-none drag-none`}
+            onCopy={(e) => {
+                e.preventDefault();
+                return false;
+            }}
+            onContextMenu={(e) => {
+                e.preventDefault();
+                return false;
+            }}
+        >
 
             {lockdownMode && (
                 <div className="fixed inset-0 bg-red-900 z-50 flex items-center justify-center p-4">
@@ -612,27 +670,29 @@ function ExamPage() {
                             </div>
                         </div>
 
-                        {!cameraConnected ? (
-                            <button
-                                onClick={startCamera}
-                                className="w-full py-4 rounded-xl font-bold text-lg transition-all flex items-center justify-center gap-2 bg-purple-600 hover:bg-purple-700 hover:shadow-lg text-white mb-4"
-                            >
-                                <Eye className="w-5 h-5" />
-                                Connect Camera & Microphone
-                            </button>
-                        ) : (
+                        <div className="flex flex-col gap-4">
+                            {!cameraConnected && (
+                                <button
+                                    onClick={startCamera}
+                                    className="w-full py-4 rounded-xl font-bold text-lg transition-all flex items-center justify-center gap-2 bg-gray-700 hover:bg-gray-600 text-white"
+                                >
+                                    <Eye className="w-5 h-5" />
+                                    Try Connecting Camera
+                                </button>
+                            )}
+
                             <button
                                 onClick={enterFullscreen}
-                                disabled={!consentGiven || !cameraConnected}
+                                disabled={!consentGiven}
                                 className={`w-full py-4 rounded-xl font-bold text-lg transition-all flex items-center justify-center gap-2
-                                ${consentGiven && cameraConnected
+                                ${consentGiven
                                         ? 'bg-gradient-to-r from-cyan-600 to-blue-600 hover:shadow-lg hover:shadow-cyan-500/20'
                                         : 'bg-gray-700 cursor-not-allowed opacity-50'}`}
                             >
                                 <Maximize className="w-5 h-5" />
-                                Enter Fullscreen Mode & Start Exam
+                                {cameraConnected ? 'Enter Fullscreen Mode & Start Exam' : 'Enter Secure Mode (No Camera)'}
                             </button>
-                        )}
+                        </div>
                     </div>
                 </div>
             ) : (
