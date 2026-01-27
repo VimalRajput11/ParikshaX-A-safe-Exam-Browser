@@ -26,15 +26,30 @@ app.use('/api/exams', examRoutes);
 app.use('/api/sessions', sessionRoutes);
 app.use('/api/students', require('./routes/student'));
 
-// Connect to MongoDB
-// console.log('Connecting to MongoDB at:', process.env.MONGO_URI);
-mongoose.connect(process.env.MONGO_URI)
-    .then(() => {
+// MongoDB Connection Utility for Serverless
+const connectDB = async () => {
+    if (mongoose.connection.readyState >= 1) return;
+
+    try {
+        await mongoose.connect(process.env.MONGO_URI, {
+            serverSelectionTimeoutMS: 5000, // Timeout after 5s instead of 30s
+            socketTimeoutMS: 45000,
+        });
         console.log('MongoDB database connection established successfully');
-    })
-    .catch((err) => {
+    } catch (err) {
         console.error('MongoDB connection error:', err);
-    });
+        // Do not throw here, let the request fail gracefully later or retry
+    }
+};
+
+// Middleware to ensure DB connection
+app.use(async (req, res, next) => {
+    await connectDB();
+    next();
+});
+
+// Initial connection attempt
+connectDB();
 
 if (process.env.NODE_ENV !== 'production') {
     app.listen(PORT, () => {
