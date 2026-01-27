@@ -263,9 +263,10 @@ function ExamPage() {
             setQuestions(sections[nextIndex].questions);
             setCurrentQuestionIndex(0);
             setTimeLeft(sections[nextIndex].duration * 60);
-            alert(`Time for ${sections[currentSectionIndex].title} is over! Moving to ${sections[nextIndex].title}.`);
+            addWarning(`Time for ${sections[currentSectionIndex].title} is over! Moving to ${sections[nextIndex].title}.`);
         } else {
-            initiateExit(); // Auto-submit
+            // Auto-submit directly when time is up
+            confirmAndExit();
         }
     };
 

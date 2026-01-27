@@ -18,7 +18,8 @@ import {
     Edit3,
     Upload,
     Download,
-    FileSpreadsheet
+    FileSpreadsheet,
+    Menu
 } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { useNavigate } from 'react-router-dom';
@@ -71,63 +72,81 @@ const ConfirmModal = ({ isOpen, title, message, onConfirm, onCancel, confirmText
     );
 };
 
-const Sidebar = ({ activeTab, setActiveTab, handleLogout }) => (
-    <div className="w-64 bg-gray-900 border-r border-gray-800 flex flex-col h-screen">
-        <div className="p-6 border-b border-gray-800">
-            <h1 className="text-xl font-bold bg-gradient-to-r from-cyan-400 to-blue-500 bg-clip-text text-transparent">
-                ParikshaX Admin
-            </h1>
-            <p className="text-xs text-gray-500 mt-1">Exam Control Center</p>
-        </div>
+const Sidebar = ({ activeTab, setActiveTab, handleLogout, isOpen, setIsOpen }) => (
+    <>
+        {/* Mobile Overlay */}
+        {isOpen && (
+            <div
+                className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40 lg:hidden"
+                onClick={() => setIsOpen(false)}
+            />
+        )}
 
-        <nav className="flex-1 p-4 space-y-2">
-            <button
-                onClick={() => setActiveTab('dashboard')}
-                className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${activeTab === 'dashboard' ? 'bg-cyan-900/20 text-cyan-400 border border-cyan-800' : 'text-gray-400 hover:bg-gray-800 hover:text-white'}`}
-            >
-                <LayoutDashboard className="w-5 h-5" /> Dashboard
-            </button>
-            <button
-                onClick={() => setActiveTab('create-exam')}
-                className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${activeTab === 'create-exam' ? 'bg-cyan-900/20 text-cyan-400 border border-cyan-800' : 'text-gray-400 hover:bg-gray-800 hover:text-white'}`}
-            >
-                <FilePlus className="w-5 h-5" /> Create Exam
-            </button>
-            <button
-                onClick={() => setActiveTab('students')}
-                className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${activeTab === 'students' ? 'bg-cyan-900/20 text-cyan-400 border border-cyan-800' : 'text-gray-400 hover:bg-gray-800 hover:text-white'}`}
-            >
-                <Users className="w-5 h-5" /> Students
-            </button>
-            <button
-                onClick={() => setActiveTab('monitoring')}
-                className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${activeTab === 'monitoring' ? 'bg-cyan-900/20 text-cyan-400 border border-cyan-800' : 'text-gray-400 hover:bg-gray-800 hover:text-white'}`}
-            >
-                <Eye className="w-5 h-5" /> Live Monitoring
-            </button>
-            <button
-                onClick={() => setActiveTab('results')}
-                className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${activeTab === 'results' ? 'bg-cyan-900/20 text-cyan-400 border border-cyan-800' : 'text-gray-400 hover:bg-gray-800 hover:text-white'}`}
-            >
-                <Award className="w-5 h-5" /> Results
-            </button>
-            <button
-                onClick={() => setActiveTab('settings')}
-                className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${activeTab === 'settings' ? 'bg-cyan-900/20 text-cyan-400 border border-cyan-800' : 'text-gray-400 hover:bg-gray-800 hover:text-white'}`}
-            >
-                <Settings className="w-5 h-5" /> Settings
-            </button>
-        </nav>
+        <div className={`fixed lg:static inset-y-0 left-0 w-64 bg-gray-900 border-r border-gray-800 flex flex-col h-screen z-50 transition-transform duration-300 lg:translate-x-0 ${isOpen ? 'translate-x-0' : '-translate-x-full'}`}>
+            <div className="p-6 border-b border-gray-800 flex justify-between items-center">
+                <div>
+                    <h1 className="text-xl font-bold bg-gradient-to-r from-cyan-400 to-blue-500 bg-clip-text text-transparent">
+                        ParikshaX Admin
+                    </h1>
+                    <p className="text-xs text-gray-500 mt-1">Exam Control Center</p>
+                </div>
+                <button
+                    onClick={() => setIsOpen(false)}
+                    className="lg:hidden p-2 hover:bg-gray-800 rounded-lg text-gray-400"
+                >
+                    <X className="w-6 h-6" />
+                </button>
+            </div>
 
-        <div className="p-4 border-t border-gray-800">
-            <button
-                onClick={handleLogout}
-                className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-red-400 hover:bg-red-900/20 border border-transparent hover:border-red-900 transition-all"
-            >
-                <LogOut className="w-5 h-5" /> Logout
-            </button>
+            <nav className="flex-1 p-4 space-y-2 overflow-y-auto">
+                <button
+                    onClick={() => { setActiveTab('dashboard'); setIsOpen(false); }}
+                    className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${activeTab === 'dashboard' ? 'bg-cyan-900/20 text-cyan-400 border border-cyan-800' : 'text-gray-400 hover:bg-gray-800 hover:text-white'}`}
+                >
+                    <LayoutDashboard className="w-5 h-5" /> Dashboard
+                </button>
+                <button
+                    onClick={() => { setActiveTab('create-exam'); setIsOpen(false); }}
+                    className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${activeTab === 'create-exam' ? 'bg-cyan-900/20 text-cyan-400 border border-cyan-800' : 'text-gray-400 hover:bg-gray-800 hover:text-white'}`}
+                >
+                    <FilePlus className="w-5 h-5" /> Create Exam
+                </button>
+                <button
+                    onClick={() => { setActiveTab('students'); setIsOpen(false); }}
+                    className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${activeTab === 'students' ? 'bg-cyan-900/20 text-cyan-400 border border-cyan-800' : 'text-gray-400 hover:bg-gray-800 hover:text-white'}`}
+                >
+                    <Users className="w-5 h-5" /> Students
+                </button>
+                <button
+                    onClick={() => { setActiveTab('monitoring'); setIsOpen(false); }}
+                    className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${activeTab === 'monitoring' ? 'bg-cyan-900/20 text-cyan-400 border border-cyan-800' : 'text-gray-400 hover:bg-gray-800 hover:text-white'}`}
+                >
+                    <Eye className="w-5 h-5" /> Live Monitoring
+                </button>
+                <button
+                    onClick={() => { setActiveTab('results'); setIsOpen(false); }}
+                    className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${activeTab === 'results' ? 'bg-cyan-900/20 text-cyan-400 border border-cyan-800' : 'text-gray-400 hover:bg-gray-800 hover:text-white'}`}
+                >
+                    <Award className="w-5 h-5" /> Results
+                </button>
+                <button
+                    onClick={() => { setActiveTab('settings'); setIsOpen(false); }}
+                    className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${activeTab === 'settings' ? 'bg-cyan-900/20 text-cyan-400 border border-cyan-800' : 'text-gray-400 hover:bg-gray-800 hover:text-white'}`}
+                >
+                    <Settings className="w-5 h-5" /> Settings
+                </button>
+            </nav>
+
+            <div className="p-4 border-t border-gray-800">
+                <button
+                    onClick={handleLogout}
+                    className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-red-400 hover:bg-red-900/20 border border-transparent hover:border-red-900 transition-all font-bold"
+                >
+                    <LogOut className="w-5 h-5" /> Logout
+                </button>
+            </div>
         </div>
-    </div>
+    </>
 );
 
 const StudentManagement = ({ students, setStudents, exams, onDelete, notify, confirmAction, fetchStudents }) => { // Added fetchStudents
@@ -356,136 +375,138 @@ const StudentManagement = ({ students, setStudents, exams, onDelete, notify, con
 
     if (view === 'list-exams') {
         return (
-            <div className="flex-1 overflow-y-auto p-8">
+            <div className="flex-1 overflow-y-auto p-4 md:p-8">
                 <h2 className="text-2xl font-bold mb-8">Select Exam to Manage Students</h2>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
                     {exams.map(exam => (
-                        <div key={exam._id} onClick={() => handleExamClick(exam)} className="bg-gray-800 border border-gray-700 hover:border-cyan-500 rounded-xl p-6 cursor-pointer transition-all hover:bg-gray-700/50 group">
-                            <h3 className="text-xl font-bold group-hover:text-cyan-400 mb-2">{exam.title}</h3>
-                            <div className="text-sm text-gray-400 mb-4 font-mono">{exam.code}</div>
+                        <div key={exam._id} onClick={() => handleExamClick(exam)} className="bg-gray-800 border border-gray-700 hover:border-cyan-500 rounded-xl p-5 md:p-6 cursor-pointer transition-all hover:bg-gray-700/50 group">
+                            <h3 className="text-lg md:text-xl font-bold group-hover:text-cyan-400 mb-2 truncate">{exam.title}</h3>
+                            <div className="text-sm text-gray-400 mb-4 font-mono select-all bg-gray-900/50 px-2 py-1 rounded inline-block">{exam.code}</div>
                             <div className="flex justify-between items-center text-sm text-gray-500">
                                 <span>{exam.duration} mins</span>
-                                <span>Manage Students &rarr;</span>
+                                <span className="text-cyan-500 font-medium">Manage &rarr;</span>
                             </div>
                         </div>
                     ))}
-                    {exams.length === 0 && <div className="text-gray-500">No exams created yet.</div>}
+                    {exams.length === 0 && <div className="text-gray-500 col-span-full text-center py-12 bg-gray-800/20 rounded-xl border border-dashed border-gray-700">No exams created yet.</div>}
                 </div>
             </div>
         );
     }
 
     return (
-        <div className="flex-1 overflow-y-auto p-8">
-            <button onClick={() => setView('list-exams')} className="text-gray-400 hover:text-white mb-6 flex items-center gap-2">&larr; Back to Exams</button>
-            <h2 className="text-2xl font-bold mb-2">Manage Students for: <span className="text-cyan-400">{selectedExam.title}</span></h2>
-            <p className="text-gray-500 mb-8 border-b border-gray-700 pb-4">Exam Code: {selectedExam.code}</p>
+        <div className="flex-1 overflow-y-auto p-4 md:p-8">
+            <button onClick={() => setView('list-exams')} className="text-gray-400 hover:text-white mb-6 flex items-center gap-2 font-medium bg-gray-800/50 px-3 py-1.5 rounded-lg border border-gray-700 transition-colors">&larr; Back to Exams</button>
+            <h2 className="text-xl md:text-2xl font-bold mb-2">Manage Students: <span className="text-cyan-400 block sm:inline">{selectedExam.title}</span></h2>
+            <p className="text-sm text-gray-500 mb-8 border-b border-gray-700 pb-4">Exam Code: <span className="font-mono text-cyan-500/80">{selectedExam.code}</span></p>
 
-            <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
-                <div className="space-y-8">
+            <div className="grid grid-cols-1 xl:grid-cols-3 gap-6 md:gap-8">
+                <div className="space-y-6 md:space-y-8">
                     {/* Add Single */}
-                    <div className="bg-gray-800 border border-gray-700 rounded-xl p-6">
+                    <div className="bg-gray-800 border border-gray-700 rounded-xl p-5 md:p-6 shadow-xl">
                         <h3 className="text-lg font-bold mb-4 flex items-center gap-2">
-                            <Plus className="w-5 h-5 text-green-400" /> Register Single Student
+                            <Plus className="w-5 h-5 text-green-400" /> Register Student
                         </h3>
                         <form onSubmit={handleSingleRegister} className="space-y-4">
                             <div>
-                                <label className="text-sm font-medium text-gray-400 mb-1 block">Full Name</label>
-                                <input type="text" required value={newName} onChange={(e) => setNewName(e.target.value)} placeholder="e.g., Aditi Rao" className="w-full bg-gray-900 border border-gray-700 rounded-lg p-3 focus:border-cyan-500 outline-none" />
+                                <label className="text-sm font-medium text-gray-400 mb-1.5 block">Full Name</label>
+                                <input type="text" required value={newName} onChange={(e) => setNewName(e.target.value)} placeholder="e.g., Aditi Rao" className="w-full bg-gray-900 border border-gray-700 rounded-lg p-3 focus:border-cyan-500 outline-none transition-all" />
                             </div>
                             <div>
-                                <label className="text-sm font-medium text-gray-400 mb-1 block">Email Address</label>
-                                <input type="email" required value={newEmail} onChange={(e) => setNewEmail(e.target.value)} placeholder="student@university.edu" className="w-full bg-gray-900 border border-gray-700 rounded-lg p-3 focus:border-cyan-500 outline-none" />
+                                <label className="text-sm font-medium text-gray-400 mb-1.5 block">Email Address</label>
+                                <input type="email" required value={newEmail} onChange={(e) => setNewEmail(e.target.value)} placeholder="student@university.edu" className="w-full bg-gray-900 border border-gray-700 rounded-lg p-3 focus:border-cyan-500 outline-none transition-all" />
                             </div>
-                            <button type="submit" className="w-full py-3 bg-green-600 hover:bg-green-700 text-white font-bold rounded-lg transition-all">Add to Exam</button>
+                            <button type="submit" className="w-full py-3 bg-green-600 hover:bg-green-700 text-white font-bold rounded-lg transition-all shadow-lg shadow-green-900/20 active:scale-[0.98]">Add to Exam</button>
                         </form>
                     </div>
 
                     {/* Bulk Upload */}
-                    <div className="bg-gray-800 border border-gray-700 rounded-xl p-6">
+                    <div className="bg-gray-800 border border-gray-700 rounded-xl p-5 md:p-6 shadow-xl">
                         <h3 className="text-lg font-bold mb-4 flex items-center gap-2">
                             <FilePlus className="w-5 h-5 text-blue-400" /> Bulk Register
                         </h3>
 
                         <div className="space-y-4">
                             {/* Excel Upload Option */}
-                            <div className="p-4 bg-gray-900/50 border border-dashed border-gray-700 rounded-lg">
-                                <label className="flex flex-col items-center justify-center cursor-pointer group">
-                                    <FileSpreadsheet className="w-8 h-8 text-gray-500 group-hover:text-cyan-400 mb-2 transition-colors" />
-                                    <span className="text-sm font-medium text-gray-400 group-hover:text-white transition-colors">Upload Excel Sheet</span>
+                            <div className="p-5 bg-gray-900/50 border-2 border-dashed border-gray-700 rounded-xl hover:border-cyan-500/50 transition-all group">
+                                <label className="flex flex-col items-center justify-center cursor-pointer">
+                                    <FileSpreadsheet className="w-10 h-10 text-gray-500 group-hover:text-cyan-400 mb-2 transition-colors" />
+                                    <span className="text-sm font-semibold text-gray-400 group-hover:text-white transition-colors">Upload Excel Sheet</span>
                                     <input type="file" className="hidden" accept=".xlsx, .xls, .csv" onChange={handleFileUpload} />
                                 </label>
-                                <div className="mt-3 flex justify-between items-center text-[11px]">
+                                <div className="mt-4 flex flex-col sm:flex-row justify-between items-center gap-2 text-[11px]">
                                     <span className="text-gray-500 italic">Format: Name, Email columns</span>
-                                    <button onClick={downloadTemplate} className="text-cyan-500 hover:text-cyan-400 flex items-center gap-1 font-bold">
+                                    <button onClick={downloadTemplate} className="text-cyan-500 hover:text-cyan-400 flex items-center gap-1 font-bold bg-cyan-500/10 px-2 py-1 rounded">
                                         <Download className="w-3 h-3" /> Get Template
                                     </button>
                                 </div>
                             </div>
 
-                            <div className="relative">
+                            <div className="relative py-2">
                                 <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-gray-700"></div></div>
-                                <div className="relative flex justify-center text-xs uppercase"><span className="bg-gray-800 px-2 text-gray-500 font-bold tracking-widest">OR PASTE</span></div>
+                                <div className="relative flex justify-center text-xs uppercase"><span className="bg-gray-800 px-3 text-gray-500 font-bold tracking-widest">OR PASTE</span></div>
                             </div>
 
                             <div>
-                                <div className="text-[11px] text-gray-500 mb-2 uppercase tracking-wider">Paste (Name, Email) per line:</div>
+                                <label className="text-[11px] text-gray-500 mb-2 uppercase tracking-wider block font-bold">Paste (Name, Email) per line:</label>
                                 <textarea
                                     value={bulkData}
                                     onChange={(e) => setBulkData(e.target.value)}
                                     placeholder="John Doe, john@example.com&#10;Jane Smith, jane@example.com"
-                                    className="w-full h-24 bg-gray-900 border border-gray-700 rounded-lg p-3 text-xs font-mono focus:border-cyan-500 outline-none mb-3"
+                                    className="w-full h-24 bg-gray-900 border border-gray-700 rounded-lg p-3 text-xs font-mono focus:border-cyan-500 outline-none mb-3 transition-all"
                                 ></textarea>
-                                <button onClick={handleBulkRegister} className="w-full py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold rounded-lg transition-all shadow-lg hover:shadow-blue-500/20">Register from Text</button>
+                                <button onClick={handleBulkRegister} className="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold rounded-lg transition-all shadow-lg hover:shadow-blue-500/20 active:scale-[0.98]">Register from Text</button>
                             </div>
                         </div>
                     </div>
                 </div>
 
-                <div className="xl:col-span-2 bg-gray-800 border border-gray-700 rounded-xl overflow-hidden flex flex-col h-fit">
-                    <div className="p-6 border-b border-gray-700 flex justify-between items-center bg-gray-900/30">
-                        <h3 className="font-bold">Registered for this Exam ({examStudents.length})</h3>
+                <div className="xl:col-span-2 bg-gray-800 border border-gray-700 rounded-xl overflow-hidden flex flex-col h-fit shadow-xl">
+                    <div className="p-4 md:p-6 border-b border-gray-700 flex flex-col sm:flex-row justify-between items-center bg-gray-900/30 gap-4">
+                        <h3 className="font-bold">Registered Students ({examStudents.length})</h3>
                         {examStudents.length > 0 && (
                             <button
                                 onClick={handleBulkResendCredentials}
-                                className="text-xs bg-cyan-600 hover:bg-cyan-700 px-3 py-1.5 rounded font-bold flex items-center gap-1.5 transition-all"
+                                className="w-full sm:w-auto text-xs bg-cyan-600 hover:bg-cyan-700 px-4 py-2 rounded-lg font-bold flex items-center justify-center gap-2 transition-all shadow-lg shadow-cyan-900/20 active:scale-[0.95]"
                             >
-                                <Upload className="w-3 h-3 rotate-180" /> Email All
+                                <Upload className="w-3.5 h-3.5 rotate-180" /> Email All
                             </button>
                         )}
                     </div>
-                    <div className="overflow-x-auto">
-                        <table className="w-full text-left">
+                    <div className="overflow-x-auto scrollbar-thin scrollbar-thumb-gray-700">
+                        <table className="w-full text-left min-w-[600px]">
                             <thead className="bg-gray-900/50 text-gray-400 text-xs uppercase font-semibold">
                                 <tr>
-                                    <th className="p-4">ID</th>
+                                    <th className="p-4">Student ID</th>
                                     <th className="p-4">Name</th>
-                                    <th className="p-4">Email</th>
-                                    <th className="p-4">Action</th>
+                                    <th className="p-4">Email Address</th>
+                                    <th className="p-4 text-right">Action</th>
                                 </tr>
                             </thead>
-                            <tbody className="divide-y divide-gray-700">
-                                {examStudents.length === 0 && <tr><td colSpan="4" className="p-8 text-center text-gray-500">No students registered yet.</td></tr>}
+                            <tbody className="divide-y divide-gray-700/50">
+                                {examStudents.length === 0 && <tr><td colSpan="4" className="p-12 text-center text-gray-500 font-medium">No students registered yet.</td></tr>}
                                 {examStudents.map((student) => (
-                                    <tr key={student._id} className="hover:bg-gray-700/30">
-                                        <td className="p-4 font-mono font-bold text-cyan-400">{student.studentId}</td>
+                                    <tr key={student._id} className="hover:bg-gray-700/30 transition-colors">
+                                        <td className="p-4 font-mono font-bold text-cyan-400 text-sm">{student.studentId}</td>
                                         <td className="p-4 font-medium">{student.name}</td>
-                                        <td className="p-4 text-gray-400">{student.email}</td>
-                                        <td className="p-4 flex gap-2">
-                                            <button className="text-gray-400 hover:text-white text-xs border border-gray-700 px-2 py-1 rounded" onClick={() => { navigator.clipboard.writeText(student.studentId); notify('ID Copied!'); }}>Copy ID</button>
-                                            <button
-                                                className="text-cyan-400 hover:text-cyan-300 text-xs border border-cyan-900/30 bg-cyan-900/10 px-2 py-1 rounded"
-                                                onClick={() => handleResendCredentials(student._id)}
-                                            >
-                                                Email
-                                            </button>
-                                            <button
-                                                onClick={() => onDelete(student._id)}
-                                                className="text-red-500 hover:text-red-400 transition-colors p-1"
-                                                title="Delete Student"
-                                            >
-                                                <Trash2 className="w-4 h-4" />
-                                            </button>
+                                        <td className="p-4 text-gray-400 text-sm truncate max-w-[150px]" title={student.email}>{student.email}</td>
+                                        <td className="p-4">
+                                            <div className="flex justify-end items-center gap-1">
+                                                <button className="text-gray-400 hover:text-white text-[10px] border border-gray-700 px-2 py-1 rounded-md transition-colors" onClick={() => { navigator.clipboard.writeText(student.studentId); notify('ID Copied!'); }}>Copy</button>
+                                                <button
+                                                    className="text-cyan-400 hover:text-cyan-300 text-[10px] border border-cyan-900/30 bg-cyan-900/10 px-2 py-1 rounded-md transition-colors font-bold"
+                                                    onClick={() => handleResendCredentials(student._id)}
+                                                >
+                                                    Email
+                                                </button>
+                                                <button
+                                                    onClick={() => onDelete(student._id)}
+                                                    className="text-red-500 hover:text-white hover:bg-red-500/20 p-2 rounded-md transition-all"
+                                                    title="Delete Student"
+                                                >
+                                                    <Trash2 className="w-4 h-4" />
+                                                </button>
+                                            </div>
                                         </td>
                                     </tr>
                                 ))}
@@ -590,56 +611,55 @@ const CreateExam = ({ setExams, setActiveTab, notify }) => {
     };
 
     return (
-        <div className="flex-1 p-8 overflow-y-auto">
+        <div className="flex-1 p-4 md:p-8 overflow-y-auto">
             <div className="max-w-4xl mx-auto">
-                <div className="flex justify-between items-center mb-8">
-                    <h2 className="text-2xl font-bold">Create Multi-Section Exam</h2>
-                    <button onClick={handleSaveExam} className="flex items-center gap-2 px-6 py-2 bg-green-600 hover:bg-green-700 rounded-lg font-bold transition-all"><Save className="w-4 h-4" /> Save Exam</button>
+                <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4 mb-8">
+                    <h2 className="text-xl md:text-2xl font-bold">Create Multi-Section Exam</h2>
+                    <button onClick={handleSaveExam} className="flex items-center justify-center gap-2 px-6 py-3 bg-green-600 hover:bg-green-700 rounded-xl font-bold transition-all shadow-lg shadow-green-900/20 active:scale-[0.98]"><Save className="w-4 h-4" /> Save Exam</button>
                 </div>
 
                 <div className="mb-8">
-                    <label className="text-sm font-medium text-gray-400 mb-1 block">Exam Title</label>
-                    <input type="text" value={examTitle} onChange={(e) => setExamTitle(e.target.value)} placeholder="e.g. Placement Assessment 2024" className="w-full bg-gray-800 border border-gray-700 rounded-lg p-3 text-white outline-none focus:border-cyan-500" />
+                    <label className="text-sm font-medium text-gray-400 mb-2 block">Exam Title</label>
+                    <input type="text" value={examTitle} onChange={(e) => setExamTitle(e.target.value)} placeholder="e.g. Placement Assessment 2024" className="w-full bg-gray-800 border border-gray-700 rounded-xl p-3.5 text-white outline-none focus:border-cyan-500 shadow-inner transition-all" />
                 </div>
 
                 <div className="space-y-4 mb-8">
-                    <div className="flex justify-between items-center">
+                    <div className="flex justify-between items-center px-1">
                         <h3 className="font-bold text-lg">Sections</h3>
-                        <button onClick={handleAddSection} className="text-sm bg-gray-700 hover:bg-gray-600 px-3 py-1 rounded flex items-center gap-1"><Plus className="w-4 h-4" /> Add Section</button>
+                        <button onClick={handleAddSection} className="text-sm bg-gray-800 hover:bg-gray-700 border border-gray-700 px-4 py-2 rounded-lg flex items-center gap-2 transition-all font-semibold"><Plus className="w-4 h-4 text-cyan-400" /> Add Section</button>
                     </div>
                     {sections.map((section, idx) => (
-                        <div key={idx} className={`p-4 rounded-xl border transition-all ${idx === activeSectionIndex ? 'bg-cyan-900/10 border-cyan-500/50' : 'bg-gray-800/40 border-gray-700'}`}>
-                            <div className="grid grid-cols-12 gap-4 items-center">
-                                <div className="col-span-1">
-                                    <span className="text-gray-500 font-mono">#{idx + 1}</span>
-                                </div>
-                                <div className="col-span-5">
+                        <div key={idx} className={`p-4 md:p-5 rounded-2xl border transition-all ${idx === activeSectionIndex ? 'bg-cyan-900/10 border-cyan-500/50 shadow-lg shadow-cyan-900/10' : 'bg-gray-800/40 border-gray-700'}`}>
+                            <div className="flex flex-col md:flex-row gap-4 md:items-center">
+                                <div className="flex items-center gap-4 flex-1">
+                                    <span className="text-gray-500 font-mono font-bold bg-gray-900 w-8 h-8 rounded-lg flex items-center justify-center shrink-0">#{idx + 1}</span>
                                     <input
                                         type="text"
                                         value={section.title}
                                         onChange={(e) => handleSectionTitleChange(idx, e.target.value)}
-                                        className="w-full bg-transparent border-b border-gray-600 focus:border-cyan-500 outline-none p-1 font-bold"
+                                        className="bg-transparent border-b border-gray-600 focus:border-cyan-500 outline-none p-1 font-bold text-lg flex-1 min-w-0"
+                                        placeholder="Section Name"
                                     />
                                 </div>
-                                <div className="col-span-3">
+                                <div className="flex items-center justify-between md:justify-end gap-3 md:gap-4 border-t md:border-t-0 border-gray-700/50 pt-3 md:pt-0">
                                     <div className="flex items-center gap-2">
                                         <input
                                             type="number"
                                             value={section.duration}
                                             onChange={(e) => handleSectionDurationChange(idx, e.target.value)}
-                                            className="w-16 bg-gray-900 border border-gray-600 rounded p-1 text-center font-mono"
+                                            className="w-16 md:w-20 bg-gray-900 border border-gray-700 rounded-lg p-2 text-center font-mono font-bold text-cyan-400 focus:border-cyan-500 outline-none"
                                         />
-                                        <span className="text-xs text-gray-500 uppercase">Mins</span>
+                                        <span className="text-xs text-gray-500 uppercase font-bold tracking-wider shrink-0">Mins</span>
                                     </div>
-                                </div>
-                                <div className="col-span-3 flex justify-end gap-2">
-                                    <button
-                                        onClick={() => setActiveSectionIndex(idx)}
-                                        className={`px-3 py-1 rounded text-xs font-bold ${idx === activeSectionIndex ? 'bg-cyan-500 text-white' : 'bg-gray-700 text-gray-400'}`}
-                                    >
-                                        Edit Qs ({section.questions.length})
-                                    </button>
-                                    <button onClick={() => handleRemoveSection(idx)} className="text-red-500 hover:bg-red-500/10 p-1 rounded"><Trash2 className="w-4 h-4" /></button>
+                                    <div className="flex items-center gap-2">
+                                        <button
+                                            onClick={() => setActiveSectionIndex(idx)}
+                                            className={`px-4 py-2 rounded-lg text-xs font-bold transition-all ${idx === activeSectionIndex ? 'bg-cyan-500 text-white shadow-lg shadow-cyan-900/20' : 'bg-gray-700 text-gray-400 hover:bg-gray-600'}`}
+                                        >
+                                            Edit Qs ({section.questions.length})
+                                        </button>
+                                        <button onClick={() => handleRemoveSection(idx)} className="text-red-500 hover:bg-red-500/10 p-2 rounded-lg transition-colors border border-transparent hover:border-red-500/20"><Trash2 className="w-5 h-5 focus:scale-110 active:scale-95 transition-all" /></button>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -647,55 +667,78 @@ const CreateExam = ({ setExams, setActiveTab, notify }) => {
                 </div>
 
                 {/* Question Builder for Active Section */}
-                <div className="bg-gray-800 p-6 rounded-xl border border-gray-700 mb-8">
-                    <h3 className="font-bold mb-4 flex items-center gap-2 text-cyan-400">
-                        Add Question to <span className="uppercase">{sections[activeSectionIndex].title}</span>
-                    </h3>
-                    <input type="text" value={qText} onChange={(e) => setQText(e.target.value)} placeholder="Question Text" className="w-full bg-gray-900 border border-gray-700 rounded-lg p-3 mb-4 text-white outline-none focus:border-cyan-500" />
-
-                    <div className="grid grid-cols-2 gap-4 mb-4">
-                        {qOptions.map((opt, idx) => (
-                            <input
-                                key={idx}
-                                type="text"
-                                value={opt}
-                                onChange={(e) => {
-                                    const newOpts = [...qOptions];
-                                    newOpts[idx] = e.target.value;
-                                    setQOptions(newOpts);
-                                }}
-                                placeholder={`Option ${idx + 1} `}
-                                className="w-full bg-gray-900 border border-gray-700 rounded-lg p-3 text-white outline-none focus:border-cyan-500"
-                            />
-                        ))}
+                <div className="bg-gray-800 p-5 md:p-8 rounded-2xl border border-gray-700 mb-8 shadow-2xl relative overflow-hidden">
+                    <div className="absolute top-0 right-0 p-4 opacity-5">
+                        <FileText className="w-24 h-24" />
                     </div>
+                    <h3 className="font-bold mb-6 flex items-center gap-3 text-cyan-400 text-lg uppercase tracking-wider">
+                        <Plus className="w-5 h-5" /> Add Question to: <span className="text-white bg-gray-900 px-3 py-1 rounded-lg">{sections[activeSectionIndex].title}</span>
+                    </h3>
+                    <div className="space-y-6">
+                        <div>
+                            <label className="text-xs font-bold text-gray-500 uppercase mb-2 block">Question Text</label>
+                            <input type="text" value={qText} onChange={(e) => setQText(e.target.value)} placeholder="Type your question here..." className="w-full bg-gray-900 border border-gray-700 rounded-xl p-4 text-white outline-none focus:border-cyan-500 transition-all" />
+                        </div>
 
-                    <div className="flex items-center gap-4 mb-4">
-                        <span className="text-sm text-gray-400">Correct Option:</span>
-                        <div className="flex gap-2">
-                            {qOptions.map((_, i) => (
-                                <button
-                                    key={i}
-                                    type="button"
-                                    onClick={() => setQCorrect(i)}
-                                    className={`w-10 h-10 rounded-lg font-bold border ${qCorrect === i ? 'bg-cyan-500 border-cyan-400' : 'bg-gray-900 border-gray-700 text-gray-500'}`}
-                                >
-                                    {i + 1}
-                                </button>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            {qOptions.map((opt, idx) => (
+                                <div key={idx}>
+                                    <label className="text-[10px] font-bold text-gray-500 uppercase mb-1.5 block px-1">Option {idx + 1}</label>
+                                    <input
+                                        type="text"
+                                        value={opt}
+                                        onChange={(e) => {
+                                            const newOpts = [...qOptions];
+                                            newOpts[idx] = e.target.value;
+                                            setQOptions(newOpts);
+                                        }}
+                                        placeholder={`Option ${idx + 1} `}
+                                        className="w-full bg-gray-900 border border-gray-700 rounded-xl p-3 text-white outline-none focus:border-cyan-500 transition-all md:text-sm"
+                                    />
+                                </div>
                             ))}
                         </div>
-                    </div>
 
-                    <button onClick={handleAddQuestion} className="w-full py-3 bg-cyan-600 hover:bg-cyan-700 rounded-lg font-bold transition-all shadow-lg hover:shadow-cyan-500/20">Add Question to Section</button>
+                        <div className="flex flex-col sm:flex-row sm:items-center gap-4 bg-gray-900/50 p-4 rounded-xl border border-gray-700">
+                            <span className="text-xs font-bold text-gray-400 uppercase tracking-widest shrink-0">Correct Answer:</span>
+                            <div className="flex flex-wrap gap-3">
+                                {qOptions.map((_, i) => (
+                                    <button
+                                        key={i}
+                                        type="button"
+                                        onClick={() => setQCorrect(i)}
+                                        className={`w-12 h-12 rounded-xl font-bold border-2 transition-all flex items-center justify-center shadow-md ${qCorrect === i ? 'bg-cyan-500 border-cyan-400 text-white scale-110' : 'bg-gray-800 border-gray-700 text-gray-500 hover:border-gray-600'}`}
+                                    >
+                                        {idxToLetter(i)}
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+
+                        <button onClick={handleAddQuestion} className="w-full py-4 bg-cyan-600 hover:bg-cyan-700 rounded-xl font-bold text-lg transition-all shadow-xl shadow-cyan-900/30 active:scale-[0.98]">Add Question to Section</button>
+                    </div>
                 </div>
 
                 <div className="space-y-4">
-                    <h3 className="font-bold">Total Questions in {sections[activeSectionIndex].title}: {sections[activeSectionIndex].questions.length}</h3>
+                    <div className="flex justify-between items-center px-2">
+                        <h3 className="font-bold text-lg">Question List ({sections[activeSectionIndex].title})</h3>
+                        <span className="text-sm font-mono text-cyan-500 font-bold">{sections[activeSectionIndex].questions.length} Items</span>
+                    </div>
                     {sections[activeSectionIndex].questions.map((q, i) => (
-                        <div key={i} className="bg-gray-900/50 p-4 rounded-lg border border-gray-800 flex justify-between items-center group">
-                            <div>
-                                <span className="text-gray-500 mr-2">{i + 1}.</span>
-                                <span className="font-medium">{q.questionText}</span>
+                        <div key={i} className="bg-gray-800/40 p-5 rounded-2xl border border-gray-800 flex justify-between items-start group hover:border-gray-700 transition-all shadow-md">
+                            <div className="flex gap-4">
+                                <span className="text-gray-500 font-mono font-bold pt-1 shrink-0">#{i + 1}</span>
+                                <div className="space-y-2">
+                                    <p className="font-bold text-white leading-relaxed">{q.questionText}</p>
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-1">
+                                        {q.options.map((opt, oIdx) => (
+                                            <div key={oIdx} className={`text-xs flex items-center gap-2 ${oIdx === q.correctOption ? 'text-green-400 font-bold' : 'text-gray-500'}`}>
+                                                <span className="bg-gray-900 w-5 h-5 rounded flex items-center justify-center text-[10px] shrink-0">{idxToLetter(oIdx)}</span>
+                                                <span className="truncate">{opt}</span>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
                             </div>
                             <button
                                 onClick={() => {
@@ -703,17 +746,22 @@ const CreateExam = ({ setExams, setActiveTab, notify }) => {
                                     newSections[activeSectionIndex].questions.splice(i, 1);
                                     setSections(newSections);
                                 }}
-                                className="opacity-0 group-hover:opacity-100 text-red-500 transition-opacity"
+                                className="md:opacity-0 md:group-hover:opacity-100 text-red-500 p-2 hover:bg-red-500/10 rounded-lg transition-all shrink-0 ml-4"
                             >
                                 <Trash2 className="w-4 h-4" />
                             </button>
                         </div>
                     ))}
+                    {sections[activeSectionIndex].questions.length === 0 && (
+                        <div className="text-center py-12 bg-gray-800/10 rounded-2xl border border-dashed border-gray-800 text-gray-600 font-medium">Add questions using the builder above.</div>
+                    )}
                 </div>
             </div>
         </div>
     );
 };
+
+const idxToLetter = (idx) => String.fromCharCode(65 + idx);
 
 const QuestionManagement = ({ exam, onBack, onUpdate, notify }) => {
     const [examTitle, setExamTitle] = useState(exam.title);
@@ -819,62 +867,61 @@ const QuestionManagement = ({ exam, onBack, onUpdate, notify }) => {
     };
 
     return (
-        <div className="flex-1 p-8 overflow-y-auto">
+        <div className="flex-1 p-4 md:p-8 overflow-y-auto">
             <div className="max-w-4xl mx-auto">
-                <button onClick={onBack} className="text-gray-400 hover:text-white mb-6 flex items-center gap-2">&larr; Back to Dashboard</button>
+                <button onClick={onBack} className="text-gray-400 hover:text-white mb-6 flex items-center gap-2 font-medium bg-gray-800/50 px-3 py-1.5 rounded-lg border border-gray-700 transition-colors">&larr; Back to Dashboard</button>
 
-                <div className="flex justify-between items-center mb-8">
-                    <h2 className="text-2xl font-bold flex items-center gap-2">
-                        <FileText className="text-cyan-400" /> Manage Questions: <span className="text-cyan-400">{exam.title}</span>
+                <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4 mb-8">
+                    <h2 className="text-xl md:text-2xl font-bold flex items-center gap-2">
+                        <FileText className="text-cyan-400 w-6 h-6" /> Manage: <span className="text-cyan-400 truncate">{exam.title}</span>
                     </h2>
-                    <button onClick={handleSaveExam} className="flex items-center gap-2 px-6 py-2 bg-green-600 hover:bg-green-700 rounded-lg font-bold transition-all shadow-lg shadow-green-900/20">
+                    <button onClick={handleSaveExam} className="flex items-center justify-center gap-2 px-6 py-3 bg-green-600 hover:bg-green-700 rounded-xl font-bold transition-all shadow-lg shadow-green-900/20 active:scale-[0.98]">
                         <Save className="w-4 h-4" /> Save Changes
                     </button>
                 </div>
 
                 <div className="mb-8">
-                    <label className="text-sm font-medium text-gray-400 mb-1 block">Exam Title</label>
-                    <input type="text" value={examTitle} onChange={(e) => setExamTitle(e.target.value)} className="w-full bg-gray-800 border border-gray-700 rounded-lg p-3 text-white outline-none focus:border-cyan-500" />
+                    <label className="text-xs font-bold text-gray-500 uppercase mb-2 block px-1">Exam Title</label>
+                    <input type="text" value={examTitle} onChange={(e) => setExamTitle(e.target.value)} className="w-full bg-gray-800 border border-gray-700 rounded-xl p-3.5 text-white outline-none focus:border-cyan-500 transition-all font-bold" />
                 </div>
 
                 <div className="space-y-4 mb-8">
-                    <div className="flex justify-between items-center">
+                    <div className="flex justify-between items-center px-1">
                         <h3 className="font-bold text-lg">Sections</h3>
-                        <button onClick={handleAddSection} className="text-sm bg-gray-700 hover:bg-gray-600 px-3 py-1 rounded flex items-center gap-1"><Plus className="w-4 h-4" /> Add Section</button>
+                        <button onClick={handleAddSection} className="text-sm bg-gray-800 hover:bg-gray-700 border border-gray-700 px-4 py-2 rounded-lg flex items-center gap-2 transition-all font-semibold"><Plus className="w-4 h-4 text-cyan-400" /> Add Section</button>
                     </div>
                     {sections.map((section, idx) => (
-                        <div key={idx} className={`p-4 rounded-xl border transition-all ${idx === activeSectionIndex ? 'bg-cyan-900/10 border-cyan-500/50' : 'bg-gray-800/40 border-gray-700'}`}>
-                            <div className="grid grid-cols-12 gap-4 items-center">
-                                <div className="col-span-1">
-                                    <span className="text-gray-500 font-mono">#{idx + 1}</span>
-                                </div>
-                                <div className="col-span-5">
+                        <div key={idx} className={`p-4 md:p-5 rounded-2xl border transition-all ${idx === activeSectionIndex ? 'bg-cyan-900/10 border-cyan-500/50 shadow-lg shadow-cyan-900/10' : 'bg-gray-800/40 border-gray-700'}`}>
+                            <div className="flex flex-col md:flex-row gap-4 md:items-center">
+                                <div className="flex items-center gap-4 flex-1">
+                                    <span className="text-gray-500 font-mono font-bold bg-gray-900 w-8 h-8 rounded-lg flex items-center justify-center shrink-0">#{idx + 1}</span>
                                     <input
                                         type="text"
                                         value={section.title}
                                         onChange={(e) => handleSectionTitleChange(idx, e.target.value)}
-                                        className="w-full bg-transparent border-b border-gray-600 focus:border-cyan-500 outline-none p-1 font-bold"
+                                        className="bg-transparent border-b border-gray-600 focus:border-cyan-500 outline-none p-1 font-bold text-lg flex-1 min-w-0"
+                                        placeholder="Section Name"
                                     />
                                 </div>
-                                <div className="col-span-3">
+                                <div className="flex items-center justify-between md:justify-end gap-3 md:gap-4 border-t md:border-t-0 border-gray-700/50 pt-3 md:pt-0">
                                     <div className="flex items-center gap-2">
                                         <input
                                             type="number"
                                             value={section.duration}
                                             onChange={(e) => handleSectionDurationChange(idx, e.target.value)}
-                                            className="w-16 bg-gray-900 border border-gray-600 rounded p-1 text-center font-mono"
+                                            className="w-16 md:w-20 bg-gray-900 border border-gray-700 rounded-lg p-2 text-center font-mono font-bold text-cyan-400 focus:border-cyan-500 outline-none"
                                         />
-                                        <span className="text-xs text-gray-500 uppercase">Mins</span>
+                                        <span className="text-xs text-gray-500 uppercase font-bold tracking-wider shrink-0">Mins</span>
                                     </div>
-                                </div>
-                                <div className="col-span-3 flex justify-end gap-2">
-                                    <button
-                                        onClick={() => setActiveSectionIndex(idx)}
-                                        className={`px - 3 py - 1 rounded text - xs font - bold ${idx === activeSectionIndex ? 'bg-cyan-500 text-white' : 'bg-gray-700 text-gray-400'} `}
-                                    >
-                                        Edit Qs ({section.questions.length})
-                                    </button>
-                                    <button onClick={() => handleRemoveSection(idx)} className="text-red-500 hover:bg-red-500/10 p-1 rounded"><Trash2 className="w-4 h-4" /></button>
+                                    <div className="flex items-center gap-2">
+                                        <button
+                                            onClick={() => setActiveSectionIndex(idx)}
+                                            className={`px-4 py-2 rounded-lg text-xs font-bold transition-all ${idx === activeSectionIndex ? 'bg-cyan-500 text-white shadow-lg shadow-cyan-900/20' : 'bg-gray-700 text-gray-400 hover:bg-gray-600'}`}
+                                        >
+                                            Edit Qs ({section.questions.length})
+                                        </button>
+                                        <button onClick={() => handleRemoveSection(idx)} className="text-red-500 hover:bg-red-500/10 p-2 rounded-lg transition-colors border border-transparent hover:border-red-500/20"><Trash2 className="w-5 h-5 focus:scale-110 active:scale-95 transition-all" /></button>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -882,64 +929,89 @@ const QuestionManagement = ({ exam, onBack, onUpdate, notify }) => {
                 </div>
 
                 {/* Question Builder for Active Section */}
-                <div className="bg-gray-800 p-6 rounded-xl border border-gray-700 mb-8 overflow-hidden">
-                    <h3 className="font-bold mb-4 flex items-center justify-between text-cyan-400">
-                        <span>{editingIndex !== null ? 'Edit Question' : 'Add Question'} to <span className="uppercase">{sections[activeSectionIndex]?.title}</span></span>
-                        {editingIndex !== null && <button onClick={() => { setEditingIndex(null); setQText(''); setQOptions(['', '', '', '']); setQCorrect(0); }} className="text-xs text-gray-400 hover:text-white underline">Cancel Edit</button>}
-                    </h3>
-                    <input type="text" value={qText} onChange={(e) => setQText(e.target.value)} placeholder="Question Text" className="w-full bg-gray-900 border border-gray-700 rounded-lg p-3 mb-4 text-white outline-none focus:border-cyan-500" />
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                        {qOptions.map((opt, idx) => (
-                            <input
-                                key={idx}
-                                type="text"
-                                value={opt}
-                                onChange={(e) => {
-                                    const newOpts = [...qOptions];
-                                    newOpts[idx] = e.target.value;
-                                    setQOptions(newOpts);
-                                }}
-                                placeholder={`Option ${idx + 1} `}
-                                className="w-full bg-gray-900 border border-gray-700 rounded-lg p-3 text-white outline-none focus:border-cyan-500"
-                            />
-                        ))}
+                <div className="bg-gray-800 p-5 md:p-8 rounded-2xl border border-gray-700 mb-8 shadow-2xl relative overflow-hidden">
+                    <div className="absolute top-0 right-0 p-4 opacity-5">
+                        <Edit3 className="w-24 h-24" />
                     </div>
+                    <h3 className="font-bold mb-6 flex flex-col sm:flex-row sm:items-center justify-between text-cyan-400 text-lg uppercase tracking-wider gap-4">
+                        <div className="flex items-center gap-3">
+                            {editingIndex !== null ? <Edit3 className="w-5 h-5" /> : <Plus className="w-5 h-5" />}
+                            <span>{editingIndex !== null ? 'Edit Question' : 'Add Question'}: <span className="text-white bg-gray-900 px-3 py-1 rounded-lg ml-2">{sections[activeSectionIndex]?.title}</span></span>
+                        </div>
+                        {editingIndex !== null && <button onClick={() => { setEditingIndex(null); setQText(''); setQOptions(['', '', '', '']); setQCorrect(0); }} className="text-xs text-gray-400 hover:text-white underline font-bold">Cancel Edit</button>}
+                    </h3>
+                    <div className="space-y-6">
+                        <div>
+                            <label className="text-xs font-bold text-gray-500 uppercase mb-2 block px-1">Question Text</label>
+                            <input type="text" value={qText} onChange={(e) => setQText(e.target.value)} placeholder="Type your question here..." className="w-full bg-gray-900 border border-gray-700 rounded-xl p-4 text-white outline-none focus:border-cyan-500 transition-all" />
+                        </div>
 
-                    <div className="flex items-center gap-4 mb-6">
-                        <span className="text-sm text-gray-400 text-nowrap">Correct Option:</span>
-                        <div className="flex gap-2">
-                            {qOptions.map((_, i) => (
-                                <button
-                                    key={i}
-                                    type="button"
-                                    onClick={() => setQCorrect(i)}
-                                    className={`w - 10 h - 10 rounded - lg font - bold border transition - all ${qCorrect === i ? 'bg-cyan-500 border-cyan-400' : 'bg-gray-900 border-gray-700 text-gray-500 hover:border-gray-500'} `}
-                                >
-                                    {i + 1}
-                                </button>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            {qOptions.map((opt, idx) => (
+                                <div key={idx}>
+                                    <label className="text-[10px] font-bold text-gray-500 uppercase mb-1.5 block px-1">Option {idxToLetter(idx)}</label>
+                                    <input
+                                        type="text"
+                                        value={opt}
+                                        onChange={(e) => {
+                                            const newOpts = [...qOptions];
+                                            newOpts[idx] = e.target.value;
+                                            setQOptions(newOpts);
+                                        }}
+                                        placeholder={`Option ${idxToLetter(idx)} `}
+                                        className="w-full bg-gray-900 border border-gray-700 rounded-xl p-3 text-white outline-none focus:border-cyan-500 transition-all md:text-sm"
+                                    />
+                                </div>
                             ))}
                         </div>
-                    </div>
 
-                    <button onClick={handleAddQuestion} className="w-full py-3 bg-cyan-600 hover:bg-cyan-700 rounded-lg font-bold transition-all shadow-lg hover:shadow-cyan-500/20">
-                        {editingIndex !== null ? 'Update Question' : 'Add Question to Section'}
-                    </button>
+                        <div className="flex flex-col sm:flex-row sm:items-center gap-4 bg-gray-900/50 p-4 rounded-xl border border-gray-700">
+                            <span className="text-xs font-bold text-gray-400 uppercase tracking-widest shrink-0">Correct Answer:</span>
+                            <div className="flex flex-wrap gap-3">
+                                {qOptions.map((_, i) => (
+                                    <button
+                                        key={i}
+                                        type="button"
+                                        onClick={() => setQCorrect(i)}
+                                        className={`w-12 h-12 rounded-xl font-bold border-2 transition-all flex items-center justify-center shadow-md ${qCorrect === i ? 'bg-cyan-500 border-cyan-400 text-white scale-110' : 'bg-gray-800 border-gray-700 text-gray-500 hover:border-gray-600'}`}
+                                    >
+                                        {idxToLetter(i)}
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+
+                        <button onClick={handleAddQuestion} className="w-full py-4 bg-cyan-600 hover:bg-cyan-700 rounded-xl font-bold text-lg transition-all shadow-xl shadow-cyan-900/30 active:scale-[0.98]">
+                            {editingIndex !== null ? 'Update Question' : 'Add Question'}
+                        </button>
+                    </div>
                 </div>
 
                 <div className="space-y-4">
-                    <h3 className="font-bold text-lg">Questions in {sections[activeSectionIndex]?.title} ({sections[activeSectionIndex]?.questions.length})</h3>
+                    <div className="flex justify-between items-center px-2">
+                        <h3 className="font-bold text-lg">Question List ({sections[activeSectionIndex]?.title})</h3>
+                        <span className="text-sm font-mono text-cyan-500 font-bold">{sections[activeSectionIndex]?.questions.length || 0} Items</span>
+                    </div>
                     {sections[activeSectionIndex]?.questions.map((q, i) => (
-                        <div key={i} className="bg-gray-900/50 p-4 rounded-lg border border-gray-800 flex justify-between items-center group hover:border-gray-600 transition-all">
-                            <div className="flex-1 overflow-hidden pr-4">
-                                <span className="text-gray-500 mr-2 font-mono">{i + 1}.</span>
-                                <span className="font-medium truncate">{q.questionText}</span>
-                                <div className="text-[10px] text-gray-500 mt-1 uppercase tracking-wider">Correct: Option {q.correctOption + 1}</div>
+                        <div key={i} className="bg-gray-800/40 p-5 rounded-2xl border border-gray-800 flex justify-between items-start group hover:border-gray-700 transition-all shadow-md">
+                            <div className="flex gap-4">
+                                <span className="text-gray-500 font-mono font-bold pt-1 shrink-0">#{i + 1}</span>
+                                <div className="space-y-2">
+                                    <p className="font-bold text-white leading-relaxed">{q.questionText}</p>
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-1">
+                                        {q.options.map((opt, oIdx) => (
+                                            <div key={oIdx} className={`text-xs flex items-center gap-2 ${oIdx === q.correctOption ? 'text-green-400 font-bold' : 'text-gray-500'}`}>
+                                                <span className="bg-gray-900 w-5 h-5 rounded flex items-center justify-center text-[10px] shrink-0 font-bold">{idxToLetter(oIdx)}</span>
+                                                <span className="truncate">{opt}</span>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
                             </div>
-                            <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <div className="flex flex-col gap-2 shrink-0 ml-4">
                                 <button
                                     onClick={() => handleEditQuestion(i)}
-                                    className="p-2 text-cyan-500 hover:bg-cyan-500/10 rounded-lg"
+                                    className="md:opacity-0 md:group-hover:opacity-100 text-cyan-400 p-2 hover:bg-cyan-400/10 rounded-lg transition-all"
                                     title="Edit Question"
                                 >
                                     <Edit3 className="w-4 h-4" />
@@ -950,7 +1022,7 @@ const QuestionManagement = ({ exam, onBack, onUpdate, notify }) => {
                                         newSections[activeSectionIndex].questions.splice(i, 1);
                                         setSections(newSections);
                                     }}
-                                    className="p-2 text-red-500 hover:bg-red-500/10 rounded-lg"
+                                    className="md:opacity-0 md:group-hover:opacity-100 text-red-500 p-2 hover:bg-red-500/10 rounded-lg transition-all"
                                     title="Delete Question"
                                 >
                                     <Trash2 className="w-4 h-4" />
@@ -958,10 +1030,8 @@ const QuestionManagement = ({ exam, onBack, onUpdate, notify }) => {
                             </div>
                         </div>
                     ))}
-                    {sections[activeSectionIndex]?.questions.length === 0 && (
-                        <div className="text-center py-8 bg-gray-800/20 rounded-xl border border-dashed border-gray-700 text-gray-500 italic">
-                            No questions added to this section yet.
-                        </div>
+                    {(!sections[activeSectionIndex]?.questions || sections[activeSectionIndex].questions.length === 0) && (
+                        <div className="text-center py-12 bg-gray-800/10 rounded-2xl border border-dashed border-gray-800 text-gray-600 font-medium font-bold">No questions in this section.</div>
                     )}
                 </div>
             </div>
@@ -970,47 +1040,52 @@ const QuestionManagement = ({ exam, onBack, onUpdate, notify }) => {
 };
 
 const Monitoring = ({ sessions, setSelectedSessionLog, setActiveTab, onDelete, onDeleteAll, confirmAction }) => (
-    <div className="flex-1 p-8 overflow-y-auto">
-        <div className="flex justify-between items-center mb-6">
-            <h2 className="text-2xl font-bold">Live Monitoring</h2>
+    <div className="flex-1 p-4 md:p-8 overflow-y-auto">
+        <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4 mb-8">
+            <h2 className="text-xl md:text-2xl font-bold">Live Monitoring</h2>
             {sessions.filter(s => s.status === 'in_progress').length > 0 && (
                 <button
                     onClick={onDeleteAll}
-                    className="flex items-center gap-2 px-4 py-2 bg-red-600/20 text-red-400 hover:bg-red-600 hover:text-white border border-red-900/50 rounded-lg transition-all text-sm font-bold"
+                    className="flex items-center justify-center gap-2 px-4 py-2.5 bg-red-600/20 text-red-400 hover:bg-red-600 hover:text-white border border-red-900/50 rounded-xl transition-all text-sm font-bold shadow-lg shadow-red-900/10 active:scale-95"
                 >
-                    <Trash2 className="w-4 h-4" /> Delete All Sessions
+                    <Trash2 className="w-4 h-4" /> Clear All Sessions
                 </button>
             )}
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
             {sessions.filter(s => s.status === 'in_progress').map(session => (
-                <div key={session._id} className="bg-gray-800 border border-gray-700 rounded-xl overflow-hidden hover:border-gray-600 transition-all relative group">
+                <div key={session._id} className="bg-gray-800 border border-gray-700 rounded-2xl overflow-hidden hover:border-cyan-500/50 transition-all relative group shadow-xl">
                     <button
                         onClick={() => onDelete(session._id)}
-                        className="absolute top-2 left-2 z-10 p-2 bg-red-600/80 text-white rounded-lg opacity-0 group-hover:opacity-100 transition-all hover:bg-red-500 shadow-lg"
+                        className="absolute top-3 left-3 z-10 p-2 bg-red-600/90 text-white rounded-lg md:opacity-0 md:group-hover:opacity-100 transition-all hover:bg-red-500 shadow-xl active:scale-90"
                         title="Delete Session"
                     >
                         <Trash2 className="w-4 h-4" />
                     </button>
-                    <div className="bg-black aspect-video flex items-center justify-center relative">
-                        <Monitor className="text-gray-600 w-12 h-12" />
-                        <div className="absolute top-2 right-2 flex gap-1">
-                            <span className={`px - 2 py - 0.5 rounded text - [10px] font - bold ${session.integrityScore > 80 ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'} `}>
+                    <div className="bg-gray-950 aspect-video flex items-center justify-center relative overflow-hidden">
+                        <Monitor className="text-gray-800 w-16 h-16 group-hover:scale-110 transition-transform duration-500" />
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent"></div>
+                        <div className="absolute top-3 right-3 flex gap-2">
+                            <div className="flex items-center gap-1 bg-green-500/20 text-green-400 px-2 py-1 rounded-md text-[10px] font-bold border border-green-500/20">
+                                <span className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse"></span> LIVE
+                            </div>
+                            <div className={`px-2 py-1 rounded-md text-[10px] font-bold border shadow-lg ${session.integrityScore > 80 ? 'bg-cyan-500/20 text-cyan-400 border-cyan-500/20' : 'bg-red-500/20 text-red-400 border-red-500/20'}`}>
                                 Score: {session.integrityScore}%
-                            </span>
+                            </div>
                         </div>
                     </div>
-                    <div className="p-4">
-                        <h3 className="font-bold truncate">{session.studentId?.name || 'Unknown Student'}</h3>
-                        <p className="text-xs text-gray-500 mb-4 truncate">{session.examId?.title}</p>
-                        <button onClick={() => { setSelectedSessionLog(session); setActiveTab('view-log'); }} className="w-full py-2 bg-gray-700 hover:bg-gray-600 rounded-lg text-sm transition-all font-medium border border-gray-600 hover:border-gray-500">View Log</button>
+                    <div className="p-4 md:p-5">
+                        <h3 className="font-bold text-lg truncate text-white mb-1">{session.studentId?.name || 'Unknown Student'}</h3>
+                        <p className="text-xs text-gray-500 mb-5 truncate font-medium flex items-center gap-1.5"><FileText className="w-3 h-3" /> {session.examId?.title}</p>
+                        <button onClick={() => { setSelectedSessionLog(session); setActiveTab('view-log'); }} className="w-full py-3 bg-gray-700/50 hover:bg-cyan-600 text-white rounded-xl text-sm transition-all font-bold border border-gray-600 hover:border-cyan-500 shadow-lg active:scale-[0.98]">Review Activity Log</button>
                     </div>
                 </div>
             ))}
             {sessions.filter(s => s.status === 'in_progress').length === 0 && (
-                <div className="col-span-1 md:col-span-2 lg:col-span-3 text-center text-gray-500 py-12 bg-gray-800/20 rounded-xl border border-gray-800 border-dashed">
-                    <Eye className="w-8 h-8 mx-auto mb-2 opacity-20" />
-                    <p>No active sessions currently being monitored</p>
+                <div className="col-span-full text-center py-20 bg-gray-800/10 rounded-3xl border-2 border-dashed border-gray-800/50 flex flex-col items-center justify-center px-6">
+                    <Monitor className="w-12 h-12 text-gray-700 mb-4 opacity-30" />
+                    <h3 className="text-gray-400 font-bold text-lg">No Active Sessions</h3>
+                    <p className="text-gray-600 text-sm mt-1 max-w-xs mx-auto">Real-time monitoring will appear here when students begin their exams.</p>
                 </div>
             )}
         </div>
@@ -1069,139 +1144,184 @@ const Results = ({ sessions, onDelete, onDeleteAll, notify, confirmAction }) => 
     };
 
     return (
-        <div className="flex-1 p-8 overflow-y-auto">
-            <div className="flex justify-between items-center mb-6">
-                <h2 className="text-2xl font-bold">Results by Exam</h2>
+        <div className="flex-1 p-4 md:p-8 overflow-y-auto">
+            <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4 mb-8">
+                <h2 className="text-xl md:text-2xl font-bold">Examination Results</h2>
                 {sessions.length > 0 && (
                     <button
                         onClick={onDeleteAll}
-                        className="flex items-center gap-2 px-4 py-2 bg-red-600/20 text-red-400 hover:bg-red-600 hover:text-white border border-red-900/50 rounded-lg transition-all text-sm font-bold"
+                        className="flex items-center justify-center gap-2 px-4 py-2.5 bg-red-600/20 text-red-400 hover:bg-red-600 hover:text-white border border-red-900/50 rounded-xl transition-all text-sm font-bold shadow-lg shadow-red-900/10 active:scale-95"
                     >
-                        <Trash2 className="w-4 h-4" /> Clear All Results
+                        <Trash2 className="w-4 h-4" /> Clear All History
                     </button>
                 )}
             </div>
 
             {Object.entries(groupedSessions).map(([examTitle, examSessions]) => (
-                <div key={examTitle} className="mb-8 bg-gray-800 border border-gray-700 rounded-xl overflow-hidden">
-                    <div className="bg-gray-900/50 p-4 border-b border-gray-700 flex justify-between items-center">
-                        <h3 className="font-bold text-lg text-cyan-400">{examTitle}</h3>
+                <div key={examTitle} className="mb-10 bg-gray-800 border border-gray-700 rounded-2xl overflow-hidden shadow-2xl">
+                    <div className="bg-gray-900/50 p-5 md:p-6 border-b border-gray-700 flex flex-col sm:flex-row justify-between items-center gap-4">
+                        <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 bg-cyan-500/10 rounded-lg flex items-center justify-center"><Award className="text-cyan-400 w-5 h-5" /></div>
+                            <div>
+                                <h3 className="font-bold text-lg text-white leading-tight">{examTitle}</h3>
+                                <span className="text-xs text-gray-500 font-bold uppercase tracking-widest">{examSessions.length} Submissions</span>
+                            </div>
+                        </div>
                         <button
                             onClick={() => handleBulkEmail(examTitle, examSessions)}
-                            className="bg-blue-600 hover:bg-blue-700 px-4 py-1.5 rounded text-sm font-bold flex items-center gap-2"
+                            className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-xl text-sm font-bold flex items-center justify-center gap-2 shadow-lg shadow-blue-900/20 transition-all active:scale-95"
                         >
-                            <span className="text-xs">✉️</span> Send Bulk Results
+                            <Mail className="w-4 h-4" /> Send Bulk Results
                         </button>
                     </div>
-                    <table className="w-full text-left">
-                        <thead className="bg-gray-900/30 text-xs uppercase text-gray-400">
-                            <tr>
-                                <th className="p-4">Student</th>
-                                <th className="p-4">Score</th>
-                                <th className="p-4">Integrity</th>
-                                <th className="p-4">Status</th>
-                                <th className="p-4 text-right">Action</th>
-                            </tr>
-                        </thead>
-                        <tbody className="divide-y divide-gray-700">
-                            {examSessions.map(session => (
-                                <tr key={session._id} className="hover:bg-gray-700/30 border-b border-gray-700/50 last:border-0">
-                                    <td className="p-4">
-                                        <div className="font-medium text-white">{session.studentId?.name}</div>
-                                        <div className="text-xs text-gray-500">{session.studentId?.email}</div>
-                                    </td>
-                                    <td className="p-4">
-                                        <div className="font-bold font-mono text-lg text-white">
-                                            {session.score !== undefined ? session.score : '-'}/{session.maxScore || '-'}
-                                        </div>
-                                        {/* Section Breakdown */}
-                                        {session.sectionResults && session.sectionResults.length > 0 && (
-                                            <div className="mt-2 space-y-1">
-                                                {session.sectionResults.map((sec, i) => (
-                                                    <div key={i} className="text-[10px] flex justify-between gap-4 border-t border-gray-700 pt-1">
-                                                        <span className="text-gray-400 uppercase tracking-tighter">{sec.sectionTitle}</span>
-                                                        <span className="text-cyan-400 font-bold">{sec.score}/{sec.maxScore}</span>
-                                                    </div>
-                                                ))}
-                                            </div>
-                                        )}
-                                    </td>
-                                    <td className="p-4">
-                                        <span className={`${session.integrityScore > 80 ? 'text-green-400' : 'text-red-400'}`}>
-                                            {session.integrityScore}%
-                                        </span>
-                                    </td>
-                                    <td className="p-4">
-                                        <span className={`px-2 py-1 rounded text-xs border ${session.status === 'completed' ? 'bg-green-500/10 text-green-400 border-green-500/30' : 'bg-blue-500/10 text-blue-400 border-blue-500/30'}`}>
-                                            {session.status}
-                                        </span>
-                                    </td>
-                                    <td className="p-4 text-right flex justify-end gap-3 items-center">
-                                        <button
-                                            onClick={() => handleSendEmail(session._id, session.studentId?.email)}
-                                            className="text-cyan-400 hover:text-cyan-300 text-sm font-medium transition-colors"
-                                        >
-                                            Email Result
-                                        </button>
-                                        <button
-                                            onClick={() => onDelete(session._id)}
-                                            className="text-red-500 hover:text-red-400 transition-colors"
-                                            title="Delete Result"
-                                        >
-                                            <Trash2 className="w-4 h-4" />
-                                        </button>
-                                    </td>
+                    <div className="overflow-x-auto scrollbar-thin scrollbar-thumb-gray-700">
+                        <table className="w-full text-left min-w-[700px]">
+                            <thead className="bg-gray-900/30 text-[10px] uppercase font-bold text-gray-500 tracking-widest">
+                                <tr>
+                                    <th className="p-5">Student Information</th>
+                                    <th className="p-5">Final Score</th>
+                                    <th className="p-5">Integrity</th>
+                                    <th className="p-5">Submission Status</th>
+                                    <th className="p-5 text-right">Actions</th>
                                 </tr>
-                            ))}
-                        </tbody>
-                    </table>
+                            </thead>
+                            <tbody className="divide-y divide-gray-700/50">
+                                {examSessions.map(session => (
+                                    <tr key={session._id} className="hover:bg-gray-700/20 border-b border-gray-700/30 last:border-0 transition-colors">
+                                        <td className="p-5">
+                                            <div className="font-bold text-white text-sm">{session.studentId?.name}</div>
+                                            <div className="text-xs text-gray-500 font-mono mt-0.5">{session.studentId?.email}</div>
+                                        </td>
+                                        <td className="p-5">
+                                            <div className="flex flex-col">
+                                                <div className="font-black font-mono text-lg text-cyan-400">
+                                                    {session.score !== undefined ? session.score : '-'}<span className="text-gray-600 text-sm font-medium">/{session.maxScore || '-'}</span>
+                                                </div>
+                                                {session.sectionResults && session.sectionResults.length > 0 && (
+                                                    <div className="mt-2 flex flex-wrap gap-1.5">
+                                                        {session.sectionResults.map((sec, i) => (
+                                                            <div key={i} className="text-[9px] px-1.5 py-0.5 bg-gray-900/80 rounded border border-gray-700 text-gray-400 font-bold uppercase tracking-tighter" title={sec.sectionTitle}>
+                                                                {sec.score}/{sec.maxScore}
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </td>
+                                        <td className="p-5">
+                                            <div className="flex items-center gap-2">
+                                                <div className="flex-1 h-1.5 w-12 bg-gray-900 rounded-full overflow-hidden">
+                                                    <div className={`h-full rounded-full ${session.integrityScore > 80 ? 'bg-green-500' : session.integrityScore > 50 ? 'bg-yellow-500' : 'bg-red-500'}`} style={{ width: `${session.integrityScore}%` }}></div>
+                                                </div>
+                                                <span className={`text-xs font-black font-mono ${session.integrityScore > 80 ? 'text-green-500' : 'text-red-500'}`}>
+                                                    {session.integrityScore}%
+                                                </span>
+                                            </div>
+                                        </td>
+                                        <td className="p-5">
+                                            <span className={`px-2.5 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest border ${session.status === 'completed' || session.status === 'submitted' ? 'bg-green-500/10 text-green-400 border-green-500/20' : 'bg-blue-500/10 text-blue-400 border-blue-500/20'}`}>
+                                                {session.status}
+                                            </span>
+                                        </td>
+                                        <td className="p-5 text-right">
+                                            <div className="flex justify-end gap-2">
+                                                <button
+                                                    onClick={() => handleSendEmail(session._id, session.studentId?.email)}
+                                                    className="p-2 text-cyan-400 hover:bg-cyan-400/10 rounded-lg transition-all"
+                                                    title="Email Result"
+                                                >
+                                                    <Send className="w-4 h-4" />
+                                                </button>
+                                                <button
+                                                    onClick={() => onDelete(session._id)}
+                                                    className="p-2 text-red-500 hover:bg-red-500/10 rounded-lg transition-all"
+                                                    title="Delete Result"
+                                                >
+                                                    <Trash2 className="w-4 h-4" />
+                                                </button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             ))}
 
             {Object.keys(groupedSessions).length === 0 && (
-                <div className="text-center text-gray-500 mt-10">No results found.</div>
+                <div className="text-center py-24 bg-gray-800/10 rounded-3xl border-2 border-dashed border-gray-800/50">
+                    <Award className="w-12 h-12 text-gray-700 mx-auto mb-4 opacity-30" />
+                    <p className="text-gray-500 font-bold">No exam results available yet.</p>
+                </div>
             )}
         </div>
     );
 };
 
 const ViewLog = ({ selectedSessionLog, setActiveTab }) => {
-    if (!selectedSessionLog) return <div>No session selected</div>;
+    if (!selectedSessionLog) return <div className="p-8 text-center text-gray-500 italic">No session selected for viewing logs.</div>;
     return (
-        <div className="flex-1 p-8">
-            <button onClick={() => setActiveTab('monitoring')} className="mb-4 text-gray-400 hover:text-white">&larr; Back to Monitoring</button>
-            <h2 className="text-2xl font-bold mb-2">Log: {selectedSessionLog.studentId?.name}</h2>
-            <p className="text-gray-500 mb-6">Session ID: {selectedSessionLog._id}</p>
+        <div className="flex-1 p-4 md:p-8 overflow-y-auto">
+            <button onClick={() => setActiveTab('monitoring')} className="mb-6 text-gray-400 hover:text-white flex items-center gap-2 font-medium bg-gray-800/50 px-3 py-1.5 rounded-lg border border-gray-700 transition-colors w-fit">&larr; Back to Monitoring</button>
 
-            <div className="grid grid-cols-3 gap-4 mb-6">
-                <div className="bg-gray-800 p-4 rounded-lg border border-gray-700">
-                    <div className="text-gray-400 text-xs uppercase">Integrity Score</div>
-                    <div className="text-2xl font-bold text-white">{selectedSessionLog.integrityScore}%</div>
+            <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-8 border-b border-gray-800 pb-6">
+                <div>
+                    <h2 className="text-2xl md:text-3xl font-black text-white">{selectedSessionLog.studentId?.name}</h2>
+                    <p className="text-cyan-500 font-mono text-sm mt-1">ID: {selectedSessionLog._id}</p>
                 </div>
-                <div className="bg-gray-800 p-4 rounded-lg border border-gray-700">
-                    <div className="text-gray-400 text-xs uppercase">Tab Switches</div>
-                    <div className="text-2xl font-bold text-white">{selectedSessionLog.metrics?.tabSwitchCount || 0}</div>
-                </div>
-                <div className="bg-gray-800 p-4 rounded-lg border border-gray-700">
-                    <div className="text-gray-400 text-xs uppercase">Focus Lost</div>
-                    <div className="text-2xl font-bold text-white">{Math.round(selectedSessionLog.metrics?.totalFocusLostDuration || 0)}s</div>
+                <div className="flex items-center gap-2 px-3 py-1 bg-green-500/10 border border-green-500/20 text-green-400 rounded-full text-xs font-black uppercase tracking-widest">
+                    <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span> {selectedSessionLog.status}
                 </div>
             </div>
 
-            <div className="bg-gray-800 border-gray-700 rounded-xl p-6 space-y-4">
-                <h3 className="font-bold mb-4">Event Timeline</h3>
-                {selectedSessionLog.eventLogs && selectedSessionLog.eventLogs.length > 0 ? (
-                    selectedSessionLog.eventLogs.map((log, idx) => (
-                        <div key={idx} className="flex gap-4 border-b border-gray-700 pb-2 last:border-0">
-                            <span className="text-gray-400 text-sm font-mono">{new Date(log.timestamp).toLocaleTimeString()}</span>
-                            <span className={`${log.severity === 'high' ? 'text-red-500' : 'text-yellow-500'} font - bold`}>
-                                {log.eventType.replace('_', ' ')}
-                            </span>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 md:gap-6 mb-8">
+                <div className="bg-gray-800/50 p-5 rounded-2xl border border-gray-700 shadow-xl">
+                    <div className="text-gray-500 text-[10px] uppercase font-black tracking-widest mb-1 px-1">Integrity Score</div>
+                    <div className={`text-3xl font-black ${selectedSessionLog.integrityScore > 80 ? 'text-green-400' : 'text-red-400'}`}>{selectedSessionLog.integrityScore}%</div>
+                </div>
+                <div className="bg-gray-800/50 p-5 rounded-2xl border border-gray-700 shadow-xl">
+                    <div className="text-gray-500 text-[10px] uppercase font-black tracking-widest mb-1 px-1">Tab Switches</div>
+                    <div className="text-3xl font-black text-white">{selectedSessionLog.metrics?.tabSwitchCount || 0}</div>
+                </div>
+                <div className="bg-gray-800/50 p-5 rounded-2xl border border-gray-700 shadow-xl">
+                    <div className="text-gray-500 text-[10px] uppercase font-black tracking-widest mb-1 px-1">Focus Lost Duration</div>
+                    <div className="text-3xl font-black text-white">{Math.round(selectedSessionLog.metrics?.totalFocusLostDuration || 0)}<span className="text-sm font-medium text-gray-500 ml-1">sec</span></div>
+                </div>
+            </div>
+
+            <div className="bg-gray-800 p-6 md:p-8 rounded-2xl border border-gray-700 shadow-2xl">
+                <h3 className="font-black text-lg uppercase tracking-widest mb-6 flex items-center gap-3 border-b border-gray-700 pb-4">
+                    <div className="w-8 h-8 bg-red-500/10 rounded flex items-center justify-center"><AlertTriangle className="text-red-500 w-5 h-5" /></div>
+                    Critical Event Timeline
+                </h3>
+                <div className="space-y-4">
+                    {selectedSessionLog.eventLogs && selectedSessionLog.eventLogs.length > 0 ? (
+                        selectedSessionLog.eventLogs.map((log, idx) => (
+                            <div key={idx} className="flex gap-4 group">
+                                <div className="flex flex-col items-center">
+                                    <div className={`w-3 h-3 rounded-full mt-1.5 shrink-0 ${log.severity === 'high' ? 'bg-red-500 shadow-[0_0_10px_rgba(239,68,68,0.5)]' : 'bg-yellow-500 shadow-[0_0_10px_rgba(234,179,8,0.5)]'}`}></div>
+                                    <div className="w-0.5 h-full bg-gray-700 group-last:hidden mt-1"></div>
+                                </div>
+                                <div className="flex-1 pb-6">
+                                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 mb-1">
+                                        <span className={`font-black text-sm uppercase tracking-wider ${log.severity === 'high' ? 'text-red-400' : 'text-yellow-400'}`}>
+                                            {log.eventType.replace(/_/g, ' ')}
+                                        </span>
+                                        <span className="text-gray-500 text-xs font-mono bg-gray-900 px-2 py-0.5 rounded border border-gray-800">{new Date(log.timestamp).toLocaleTimeString()}</span>
+                                    </div>
+                                    <p className="text-gray-400 text-sm leading-relaxed">{log.details || 'Suspicious behavior detected and logged by security system.'}</p>
+                                </div>
+                            </div>
+                        ))
+                    ) : (
+                        <div className="text-center py-12">
+                            <div className="w-16 h-16 bg-green-500/10 rounded-full flex items-center justify-center mx-auto mb-4 border border-green-500/20"><Monitor className="text-green-500 w-8 h-8" /></div>
+                            <h4 className="text-white font-bold">Perfect Record</h4>
+                            <p className="text-gray-500 text-sm mt-1">No integrity breaches or suspicious events recorded for this session.</p>
                         </div>
-                    ))
-                ) : (
-                    <div className="text-gray-500 italic">No suspicious events recorded.</div>
-                )}
+                    )}
+                </div>
             </div>
         </div>
     );
@@ -1222,6 +1342,7 @@ const SettingsPage = () => (
 function AdminDashboard() {
     const navigate = useNavigate();
     const [activeTab, setActiveTab] = useState('dashboard');
+    const [isSidebarOpen, setIsSidebarOpen] = useState(false);
     const [exams, setExams] = useState([]);
     const [students, setStudents] = useState([]);
     const [sessions, setSessions] = useState([]);
@@ -1401,129 +1522,155 @@ function AdminDashboard() {
     };
 
     return (
-        <div className="flex h-screen bg-[#0f1115] text-white font-sans">
-            <Sidebar activeTab={activeTab} setActiveTab={setActiveTab} handleLogout={handleLogout} />
-            {activeTab === 'dashboard' && (
-                <div className="flex-1 p-8 overflow-y-auto">
-                    <h2 className="text-2xl font-bold mb-6">Dashboard Overview</h2>
+        <div className="flex h-screen bg-[#0f1115] text-white font-sans overflow-hidden">
+            <Sidebar
+                activeTab={activeTab}
+                setActiveTab={setActiveTab}
+                handleLogout={handleLogout}
+                isOpen={isSidebarOpen}
+                setIsOpen={setIsSidebarOpen}
+            />
 
-                    {/* Stats Grid */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6 mb-8">
-                        <div className="bg-gray-800 border border-gray-700 rounded-xl p-6">
-                            <div className="flex justify-between items-start mb-4">
-                                <div className="p-2 bg-blue-500/20 rounded-lg text-blue-400"><FilePlus className="w-6 h-6" /></div>
-                                <span className="text-xs text-gray-400 bg-gray-900 px-2 py-1 rounded">Total</span>
-                            </div>
-                            <div className="text-3xl font-bold mb-1">{exams.length}</div>
-                            <div className="text-sm text-gray-500">Exams Created</div>
-                        </div>
-                        <div className="bg-gray-800 border border-gray-700 rounded-xl p-6">
-                            <div className="flex justify-between items-start mb-4">
-                                <div className="p-2 bg-purple-500/20 rounded-lg text-purple-400"><Users className="w-6 h-6" /></div>
-                                <span className="text-xs text-gray-400 bg-gray-900 px-2 py-1 rounded">Registered</span>
-                            </div>
-                            <div className="text-3xl font-bold mb-1">{students.length}</div>
-                            <div className="text-sm text-gray-500">Total Candidates</div>
-                        </div>
-                        <div className="bg-gray-800 border border-gray-700 rounded-xl p-6">
-                            <div className="flex justify-between items-start mb-4">
-                                <div className="p-2 bg-green-500/20 rounded-lg text-green-400"><Eye className="w-6 h-6" /></div>
-                                <span className="text-xs text-green-400 bg-green-900/20 px-2 py-1 rounded animate-pulse">Live</span>
-                            </div>
-                            <div className="text-3xl font-bold mb-1">{sessions.filter(s => s.status === 'in_progress').length}</div>
-                            <div className="text-sm text-gray-500">Active Sessions</div>
-                        </div>
-                        <div className="bg-gray-800 border border-gray-700 rounded-xl p-6">
-                            <div className="flex justify-between items-start mb-4">
-                                <div className="p-2 bg-yellow-500/20 rounded-lg text-yellow-400"><Award className="w-6 h-6" /></div>
-                                <span className="text-xs text-gray-400 bg-gray-900 px-2 py-1 rounded">Finished</span>
-                            </div>
-                            <div className="text-3xl font-bold mb-1">{sessions.filter(s => s.status === 'completed').length}</div>
-                            <div className="text-sm text-gray-500">Completed Exams</div>
-                        </div>
-                    </div>
+            <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
+                {/* Mobile Header */}
+                <header className="lg:hidden flex items-center justify-between p-4 bg-gray-900 border-b border-gray-800 shrink-0">
+                    <h1 className="text-lg font-bold bg-gradient-to-r from-cyan-400 to-blue-500 bg-clip-text text-transparent">
+                        ParikshaX
+                    </h1>
+                    <button
+                        onClick={() => setIsSidebarOpen(true)}
+                        className="p-2 hover:bg-gray-800 rounded-lg text-gray-400"
+                    >
+                        <Menu className="w-6 h-6" />
+                    </button>
+                </header>
 
-                    {/* Quick Actions */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-                        <div
-                            onClick={() => setActiveTab('create-exam')}
-                            className="bg-gradient-to-r from-blue-600 to-cyan-600 rounded-xl p-6 cursor-pointer hover:shadow-lg hover:shadow-cyan-500/20 transition-all group"
-                        >
-                            <h3 className="text-xl font-bold mb-2 flex items-center gap-2">
-                                <Plus className="w-5 h-5 group-hover:scale-110 transition-transform" /> Create New Exam
-                            </h3>
-                            <p className="text-blue-100 text-sm">Design a new assessment with custom questions and difficulty.</p>
-                        </div>
-                        <div
-                            onClick={() => setActiveTab('monitoring')}
-                            className="bg-gray-800 border border-gray-700 hover:border-cyan-500 rounded-xl p-6 cursor-pointer transition-all group"
-                        >
-                            <h3 className="text-xl font-bold mb-2 flex items-center gap-2 group-hover:text-cyan-400">
-                                <Monitor className="w-5 h-5" /> View Live Monitor
-                            </h3>
-                            <p className="text-gray-400 text-sm">Watch active exam sessions in real-time with AI integrity checks.</p>
-                        </div>
-                    </div>
+                <main className="flex-1 overflow-y-auto min-w-0">
+                    {activeTab === 'dashboard' && (
+                        <div className="p-4 md:p-8">
+                            <h2 className="text-2xl font-bold mb-6">Dashboard Overview</h2>
 
-                    <div className="bg-gray-800 border-gray-700 rounded-xl p-6 mb-8">
-                        <h3 className="font-bold mb-4 text-lg">Your Exam Library</h3>
-                        {exams.length === 0 && <div className="text-gray-500 text-center py-8">No exams created yet.</div>}
-                        {exams.map(exam => (
-                            <div key={exam._id} className="flex items-center justify-between bg-gray-900/50 p-4 rounded-lg mb-2 hover:bg-gray-700/30 transition-colors">
-                                <div>
-                                    <div className="flex items-center gap-3">
-                                        <span className="font-bold text-lg">{exam.title}</span>
-                                        <span className="px-2 py-0.5 rounded text-xs bg-cyan-900/30 text-cyan-400 border border-cyan-800 font-mono">{exam.code}</span>
+                            {/* Stats Grid */}
+                            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 md:gap-6 mb-8">
+                                <div className="bg-gray-800 border border-gray-700 rounded-xl p-5 md:p-6">
+                                    <div className="flex justify-between items-start mb-4">
+                                        <div className="p-2 bg-blue-500/20 rounded-lg text-blue-400"><FilePlus className="w-6 h-6" /></div>
+                                        <span className="text-xs text-gray-400 bg-gray-900 px-2 py-1 rounded">Total</span>
                                     </div>
-                                    <span className="text-xs text-gray-500 mt-1 block">
-                                        {exam.sections?.reduce((sum, section) => sum + (section.questions?.length || 0), 0)} Questions • {exam.duration} Minutes Duration
-                                    </span>
+                                    <div className="text-2xl md:text-3xl font-bold mb-1">{exams.length}</div>
+                                    <div className="text-sm text-gray-500">Exams Created</div>
                                 </div>
-                                <div className="flex gap-2">
-                                    <button
-                                        onClick={() => {
-                                            setSelectedExamForQuestions(exam);
-                                            setActiveTab('view-questions');
-                                        }}
-                                        className="text-gray-400 hover:text-white px-3 py-1.5 rounded text-sm font-medium border border-gray-700 hover:bg-gray-700 transition-all flex items-center gap-1.5"
-                                    >
-                                        <FileText className="w-3.5 h-3.5" /> View Qs
-                                    </button>
-                                    <button
-                                        onClick={() => setActiveTab('students')}
-                                        className="text-gray-400 hover:text-white px-3 py-1.5 rounded text-sm font-medium border border-gray-700 hover:bg-gray-700 transition-all"
-                                    >
-                                        Manage Students
-                                    </button>
-                                    <button
-                                        onClick={() => {
-                                            navigator.clipboard.writeText(exam.code);
-                                            notify(`Exam Code Copied: ${exam.code}`);
-                                        }}
-                                        className="bg-cyan-600 hover:bg-cyan-700 px-4 py-1.5 rounded text-sm font-bold transition-all shadow-lg shadow-cyan-900/20"
-                                    >
-                                        Copy Code
-                                    </button>
-                                    <button
-                                        onClick={() => handleDeleteExam(exam._id)}
-                                        className="p-2 text-red-500 hover:bg-red-500/10 rounded-lg transition-all"
-                                        title="Delete Exam"
-                                    >
-                                        <Trash2 className="w-5 h-5" />
-                                    </button>
+                                <div className="bg-gray-800 border border-gray-700 rounded-xl p-5 md:p-6">
+                                    <div className="flex justify-between items-start mb-4">
+                                        <div className="p-2 bg-purple-500/20 rounded-lg text-purple-400"><Users className="w-6 h-6" /></div>
+                                        <span className="text-xs text-gray-400 bg-gray-900 px-2 py-1 rounded">Registered</span>
+                                    </div>
+                                    <div className="text-2xl md:text-3xl font-bold mb-1">{students.length}</div>
+                                    <div className="text-sm text-gray-500">Total Candidates</div>
+                                </div>
+                                <div className="bg-gray-800 border border-gray-700 rounded-xl p-5 md:p-6">
+                                    <div className="flex justify-between items-start mb-4">
+                                        <div className="p-2 bg-green-500/20 rounded-lg text-green-400"><Eye className="w-6 h-6" /></div>
+                                        <span className="text-xs text-green-400 bg-green-900/20 px-2 py-1 rounded animate-pulse">Live</span>
+                                    </div>
+                                    <div className="text-2xl md:text-3xl font-bold mb-1">{sessions.filter(s => s.status === 'in_progress').length}</div>
+                                    <div className="text-sm text-gray-500">Active Sessions</div>
+                                </div>
+                                <div className="bg-gray-800 border border-gray-700 rounded-xl p-5 md:p-6">
+                                    <div className="flex justify-between items-start mb-4">
+                                        <div className="p-2 bg-yellow-500/20 rounded-lg text-yellow-400"><Award className="w-6 h-6" /></div>
+                                        <span className="text-xs text-gray-400 bg-gray-900 px-2 py-1 rounded">Finished</span>
+                                    </div>
+                                    <div className="text-2xl md:text-3xl font-bold mb-1">{sessions.filter(s => s.status === 'completed').length}</div>
+                                    <div className="text-sm text-gray-500">Completed Exams</div>
                                 </div>
                             </div>
-                        ))}
-                    </div>
-                </div>
-            )}
-            {activeTab === 'create-exam' && <CreateExam setExams={setExams} setActiveTab={setActiveTab} notify={notify} />}
-            {activeTab === 'students' && <StudentManagement students={students} setStudents={setStudents} exams={exams} onDelete={handleDeleteStudent} notify={notify} confirmAction={confirmAction} fetchStudents={fetchStudents} />}
-            {activeTab === 'monitoring' && <Monitoring sessions={sessions} setSelectedSessionLog={setSelectedSessionLog} setActiveTab={setActiveTab} onDelete={handleDeleteSession} onDeleteAll={handleDeleteAllSessions} confirmAction={confirmAction} />}
-            {activeTab === 'view-log' && <ViewLog selectedSessionLog={selectedSessionLog} setActiveTab={setActiveTab} />}
-            {activeTab === 'view-questions' && <QuestionManagement exam={selectedExamForQuestions} onBack={() => { setActiveTab('dashboard'); setSelectedExamForQuestions(null); }} onUpdate={handleUpdateExam} notify={notify} />}
-            {activeTab === 'results' && <Results sessions={sessions} onDelete={handleDeleteSession} onDeleteAll={handleDeleteAllSessions} notify={notify} confirmAction={confirmAction} />}
-            {activeTab === 'settings' && <SettingsPage />}
+
+                            {/* Quick Actions */}
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6 mb-8">
+                                <div
+                                    onClick={() => setActiveTab('create-exam')}
+                                    className="bg-gradient-to-r from-blue-600 to-cyan-600 rounded-xl p-6 cursor-pointer hover:shadow-lg hover:shadow-cyan-500/20 transition-all group"
+                                >
+                                    <h3 className="text-xl font-bold mb-2 flex items-center gap-2">
+                                        <Plus className="w-5 h-5 group-hover:scale-110 transition-transform" /> Create New Exam
+                                    </h3>
+                                    <p className="text-blue-100 text-sm">Design a new assessment with custom questions and difficulty.</p>
+                                </div>
+                                <div
+                                    onClick={() => setActiveTab('monitoring')}
+                                    className="bg-gray-800 border border-gray-700 hover:border-cyan-500 rounded-xl p-6 cursor-pointer transition-all group"
+                                >
+                                    <h3 className="text-xl font-bold mb-2 flex items-center gap-2 group-hover:text-cyan-400">
+                                        <Monitor className="w-5 h-5" /> View Live Monitor
+                                    </h3>
+                                    <p className="text-gray-400 text-sm">Watch active exam sessions in real-time with AI integrity checks.</p>
+                                </div>
+                            </div>
+
+                            <div className="bg-gray-800 border border-gray-700 rounded-xl p-4 md:p-6 mb-8 overflow-hidden">
+                                <h3 className="font-bold mb-4 text-lg">Your Exam Library</h3>
+                                {exams.length === 0 && <div className="text-gray-500 text-center py-8">No exams created yet.</div>}
+                                <div className="space-y-3">
+                                    {exams.map(exam => (
+                                        <div key={exam._id} className="flex flex-col sm:flex-row sm:items-center justify-between bg-gray-900/50 p-4 rounded-lg hover:bg-gray-700/30 transition-colors gap-4">
+                                            <div className="min-w-0">
+                                                <div className="flex items-center gap-3 mb-1 wrap">
+                                                    <span className="font-bold text-lg truncate">{exam.title}</span>
+                                                    <span className="shrink-0 px-2 py-0.5 rounded text-[10px] bg-cyan-900/30 text-cyan-400 border border-cyan-800 font-mono tracking-tighter">{exam.code}</span>
+                                                </div>
+                                                <span className="text-xs text-gray-500 block">
+                                                    {exam.sections?.reduce((sum, section) => sum + (section.questions?.length || 0), 0)} Questions • {exam.duration} Minutes Duration
+                                                </span>
+                                            </div>
+                                            <div className="flex flex-wrap gap-2 shrink-0">
+                                                <button
+                                                    onClick={() => {
+                                                        setSelectedExamForQuestions(exam);
+                                                        setActiveTab('view-questions');
+                                                    }}
+                                                    className="flex-1 sm:flex-none text-gray-400 hover:text-white px-3 py-1.5 rounded text-sm font-medium border border-gray-700 hover:bg-gray-700 transition-all flex items-center justify-center gap-1.5"
+                                                >
+                                                    <FileText className="w-3.5 h-3.5" /> <span className="sm:hidden lg:inline">View Qs</span>
+                                                </button>
+                                                <button
+                                                    onClick={() => setActiveTab('students')}
+                                                    className="flex-1 sm:flex-none text-gray-400 hover:text-white px-3 py-1.5 rounded text-sm font-medium border border-gray-700 hover:bg-gray-700 transition-all flex items-center justify-center"
+                                                >
+                                                    <span className="sm:hidden lg:inline">Manage </span>Students
+                                                </button>
+                                                <button
+                                                    onClick={() => {
+                                                        navigator.clipboard.writeText(exam.code);
+                                                        notify(`Exam Code Copied: ${exam.code}`);
+                                                    }}
+                                                    className="flex-1 sm:flex-none bg-cyan-600 hover:bg-cyan-700 px-4 py-1.5 rounded text-sm font-bold transition-all shadow-lg shadow-cyan-900/20 text-center"
+                                                >
+                                                    Copy Code
+                                                </button>
+                                                <button
+                                                    onClick={() => handleDeleteExam(exam._id)}
+                                                    className="p-2 text-red-500 hover:bg-red-500/10 rounded-lg transition-all"
+                                                    title="Delete Exam"
+                                                >
+                                                    <Trash2 className="w-5 h-5" />
+                                                </button>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        </div>
+                    )}
+                    {activeTab === 'create-exam' && <CreateExam setExams={setExams} setActiveTab={setActiveTab} notify={notify} />}
+                    {activeTab === 'students' && <StudentManagement students={students} setStudents={setStudents} exams={exams} onDelete={handleDeleteStudent} notify={notify} confirmAction={confirmAction} fetchStudents={fetchStudents} />}
+                    {activeTab === 'monitoring' && <Monitoring sessions={sessions} setSelectedSessionLog={setSelectedSessionLog} setActiveTab={setActiveTab} onDelete={handleDeleteSession} onDeleteAll={handleDeleteAllSessions} confirmAction={confirmAction} />}
+                    {activeTab === 'view-log' && <ViewLog selectedSessionLog={selectedSessionLog} setActiveTab={setActiveTab} />}
+                    {activeTab === 'view-questions' && <QuestionManagement exam={selectedExamForQuestions} onBack={() => { setActiveTab('dashboard'); setSelectedExamForQuestions(null); }} onUpdate={handleUpdateExam} notify={notify} />}
+                    {activeTab === 'results' && <Results sessions={sessions} onDelete={handleDeleteSession} onDeleteAll={handleDeleteAllSessions} notify={notify} confirmAction={confirmAction} />}
+                    {activeTab === 'settings' && <SettingsPage />}
+                </main>
+            </div>
 
             {/* Notification Overlays */}
             <div className="fixed bottom-0 right-0 p-8 space-y-4 pointer-events-none z-[9999]">
