@@ -19,7 +19,9 @@ import {
     Upload,
     Download,
     FileSpreadsheet,
-    Menu
+    Menu,
+    Mail,
+    Send
 } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { useNavigate } from 'react-router-dom';
