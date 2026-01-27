@@ -4,6 +4,7 @@ import LandingPage from './pages/LandingPage';
 import ExamPage from './pages/ExamPage';
 import AdminDashboard from './pages/AdminDashboard';
 import AdminLogin from './pages/AdminLogin';
+import NotFound from './pages/NotFound';
 
 const ProtectedRoute = ({ children }) => {
   const isAuthenticated = localStorage.getItem('adminAuth') === 'true';
@@ -38,6 +39,7 @@ function App() {
             </ProtectedExamRoute>
           }
         />
+        <Route path="*" element={<NotFound />} />
       </Routes>
     </BrowserRouter>
   );
