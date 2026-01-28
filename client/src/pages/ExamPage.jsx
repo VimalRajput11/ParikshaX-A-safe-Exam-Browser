@@ -288,12 +288,17 @@ function ExamPage() {
         return () => clearInterval(interval);
     }, [isExamActive, timeLeft]);
 
+
     // Live Snapshot Broadcaster
     useEffect(() => {
         if (!isExamActive || !sessionId || !stream) return;
 
         const captureFrame = async () => {
             if (!videoRef.current) return;
+
+            // Check if video is playing
+            if (videoRef.current.readyState < 2) return;
+
             try {
                 const canvas = document.createElement('canvas');
                 canvas.width = 320;
@@ -302,13 +307,15 @@ function ExamPage() {
                 ctx.drawImage(videoRef.current, 0, 0, canvas.width, canvas.height);
                 const snapshot = canvas.toDataURL('image/jpeg', 0.4); // High compression for speed
 
-                await fetch(`${API_BASE_URL}/sessions/${sessionId}/snapshot`, {
+                const response = await fetch(`${API_BASE_URL}/sessions/${sessionId}/snapshot`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ snapshot })
                 });
+
+                // Snapshot uploaded successfully
             } catch (err) {
-                console.warn('Snapshot upload silent fail (network):', err);
+                console.warn('[Snapshot] Upload error:', err.message);
             }
         };
 
@@ -798,8 +805,19 @@ function ExamPage() {
                                 {sections[currentSectionIndex]?.title || 'Assessment'}
                             </div>
                         </div>
-                        <div className={`text-xl font-mono font-bold ${timeLeft < 60 ? 'text-red-500 animate-pulse' : 'text-cyan-400'}`}>
-                            {formatTime(timeLeft)}
+                        <div className="flex items-center gap-4">
+                            <div className={`relative flex items-center justify-center w-48 h-10 rounded-xl overflow-hidden border transition-all duration-500 bg-gray-900/50 ${timeLeft < 60 ? 'border-red-500 shadow-lg shadow-red-500/20' : 'border-cyan-500/30'}`}>
+                                <div
+                                    className={`absolute left-0 top-0 h-full transition-all duration-1000 ${timeLeft < 60 ? 'bg-red-500/20' : 'bg-cyan-500/10'}`}
+                                    style={{ width: `${(timeLeft / (sections[currentSectionIndex]?.duration * 60 || 3600)) * 100}%` }}
+                                ></div>
+                                <div className="relative z-10 flex items-center gap-2">
+                                    <Clock className={`w-4 h-4 ${timeLeft < 60 ? 'text-red-500 animate-pulse' : 'text-cyan-400'}`} />
+                                    <span className={`text-xl font-mono font-black tracking-widest ${timeLeft < 60 ? 'text-red-500 animate-pulse' : 'text-white'}`}>
+                                        {formatTime(timeLeft)}
+                                    </span>
+                                </div>
+                            </div>
                         </div>
                         <div className="w-32"></div> {/* Spacer for alignment */}
                     </header>
@@ -995,6 +1013,15 @@ function ExamPage() {
                 title={alertConfig.title}
                 message={alertConfig.message}
                 type={alertConfig.type}
+            />
+
+            {/* Hidden video element for webcam capture */}
+            <video
+                ref={videoRef}
+                autoPlay
+                muted
+                playsInline
+                className="hidden"
             />
         </div>
     );

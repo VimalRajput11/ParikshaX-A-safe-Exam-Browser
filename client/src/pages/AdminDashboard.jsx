@@ -11,6 +11,7 @@ import {
     Eye,
     CheckCircle,
     AlertTriangle,
+    AlertCircle,
     Award,
     Monitor,
     FileText,
@@ -421,12 +422,24 @@ const StudentManagement = ({ students, setStudents, exams, onDelete, notify, con
                                         </td>
                                         <td className="p-5">
                                             <div className="flex flex-wrap gap-1.5 max-w-[200px]">
-                                                {s.eligibleExams?.map(exam => (
-                                                    <span key={exam._id} className="text-[10px] bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 px-2 py-0.5 rounded-md font-bold truncate max-w-full" title={exam.title}>
-                                                        {exam.title}
-                                                    </span>
-                                                ))}
-                                                {s.eligibleExams?.length === 0 && <span className="text-gray-600 text-[10px] italic">No Exams</span>}
+                                                {s.eligibleExams && s.eligibleExams.length > 0 ? (
+                                                    s.eligibleExams.map((exam, idx) => {
+                                                        // Handle both populated objects and raw IDs
+                                                        const examId = exam._id || exam;
+                                                        const examTitle = exam.title || 'Exam';
+                                                        return (
+                                                            <span
+                                                                key={examId || idx}
+                                                                className="text-[10px] bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 px-2 py-0.5 rounded-md font-bold truncate max-w-full"
+                                                                title={examTitle}
+                                                            >
+                                                                {examTitle}
+                                                            </span>
+                                                        );
+                                                    })
+                                                ) : (
+                                                    <span className="text-gray-600 text-[10px] italic">No Exams</span>
+                                                )}
                                             </div>
                                         </td>
                                         <td className="p-5 text-right">
@@ -620,6 +633,73 @@ const CreateExam = ({ fetchExams, setActiveTab, notify }) => {
     const [qOptions, setQOptions] = useState(['', '', '', '']);
     const [qCorrect, setQCorrect] = useState(0);
 
+    const downloadQuestionTemplate = () => {
+        const data = [
+            ["Question Text", "Option A", "Option B", "Option C", "Option D", "Correct Option (A/B/C/D)"],
+            ["What is the capital of France?", "London", "Berlin", "Paris", "Madrid", "C"],
+            ["Which planet is known as the Red Planet?", "Earth", "Mars", "Jupiter", "Venus", "B"]
+        ];
+        const ws = XLSX.utils.aoa_to_sheet(data);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, "Questions");
+        XLSX.writeFile(wb, "Question_Template.xlsx");
+    };
+
+    const handleBulkQuestionUpload = (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = (evt) => {
+            try {
+                const bstr = evt.target.result;
+                const wb = XLSX.read(bstr, { type: 'binary' });
+                const ws = wb.Sheets[wb.SheetNames[0]];
+                const data = XLSX.utils.sheet_to_json(ws);
+
+                const newQuestions = data.map(row => {
+                    const qText = row["Question Text"] || row["questionText"];
+                    const opts = [
+                        row["Option A"] || row["optionA"],
+                        row["Option B"] || row["optionB"],
+                        row["Option C"] || row["optionC"],
+                        row["Option D"] || row["optionD"]
+                    ];
+                    const correct = row["Correct Option (A/B/C/D)"]?.toString().toUpperCase().trim();
+                    let correctIdx = 0;
+                    if (correct === 'A') correctIdx = 0;
+                    else if (correct === 'B') correctIdx = 1;
+                    else if (correct === 'C') correctIdx = 2;
+                    else if (correct === 'D') correctIdx = 3;
+
+                    return {
+                        questionText: qText,
+                        options: opts.map(o => o?.toString() || ''),
+                        correctOption: correctIdx
+                    };
+                }).filter(q => q.questionText && q.options.every(o => o));
+
+                if (newQuestions.length === 0) {
+                    notify('No valid questions found. Please check the template format.', 'error');
+                    return;
+                }
+
+                const updatedSections = [...sections];
+                updatedSections[activeSectionIndex].questions = [
+                    ...updatedSections[activeSectionIndex].questions,
+                    ...newQuestions
+                ];
+                setSections(updatedSections);
+                notify(`Successfully imported ${newQuestions.length} questions!`);
+            } catch (err) {
+                console.error(err);
+                notify('Failed to process file', 'error');
+            }
+        };
+        reader.readAsBinaryString(file);
+        e.target.value = '';
+    };
+
     const handleAddQuestion = () => {
         if (!qText || qOptions.some(o => !o)) {
             notify('Please complete the question and all options', 'error');
@@ -758,9 +838,23 @@ const CreateExam = ({ fetchExams, setActiveTab, notify }) => {
                     <div className="absolute top-0 right-0 p-4 opacity-5">
                         <FileText className="w-24 h-24" />
                     </div>
-                    <h3 className="font-bold mb-6 flex items-center gap-3 text-cyan-400 text-lg uppercase tracking-wider">
-                        <Plus className="w-5 h-5" /> Add Question to: <span className="text-white bg-gray-900 px-3 py-1 rounded-lg">{sections[activeSectionIndex].title}</span>
-                    </h3>
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-6 gap-4">
+                        <h3 className="font-bold flex items-center gap-3 text-cyan-400 text-lg uppercase tracking-wider">
+                            <Plus className="w-5 h-5" /> Add Question: <span className="text-white bg-gray-900 px-3 py-1 rounded-lg">{sections[activeSectionIndex].title}</span>
+                        </h3>
+                        <div className="flex items-center gap-2">
+                            <button
+                                onClick={downloadQuestionTemplate}
+                                className="text-[10px] font-black uppercase tracking-widest px-3 py-1.5 bg-gray-700 hover:bg-gray-600 rounded-lg text-gray-300 transition-all flex items-center gap-2 border border-gray-600"
+                            >
+                                <Download className="w-3 h-3" /> Template
+                            </button>
+                            <label className="text-[10px] font-black uppercase tracking-widest px-3 py-1.5 bg-cyan-600/10 hover:bg-cyan-600/20 rounded-lg text-cyan-400 transition-all flex items-center gap-2 border border-cyan-500/20 cursor-pointer">
+                                <Upload className="w-3 h-3" /> Bulk Import
+                                <input type="file" accept=".xlsx, .xls" onChange={handleBulkQuestionUpload} className="hidden" />
+                            </label>
+                        </div>
+                    </div>
                     <div className="space-y-6">
                         <div>
                             <label className="text-xs font-bold text-gray-500 uppercase mb-2 block">Question Text</label>
@@ -860,6 +954,73 @@ const QuestionManagement = ({ exam, onBack, onUpdate, notify }) => {
     const [qOptions, setQOptions] = useState(['', '', '', '']);
     const [qCorrect, setQCorrect] = useState(0);
     const [editingIndex, setEditingIndex] = useState(null);
+
+    const downloadQuestionTemplate = () => {
+        const data = [
+            ["Question Text", "Option A", "Option B", "Option C", "Option D", "Correct Option (A/B/C/D)"],
+            ["What is the capital of France?", "London", "Berlin", "Paris", "Madrid", "C"],
+            ["Which planet is known as the Red Planet?", "Earth", "Mars", "Jupiter", "Venus", "B"]
+        ];
+        const ws = XLSX.utils.aoa_to_sheet(data);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, "Questions");
+        XLSX.writeFile(wb, "Question_Template.xlsx");
+    };
+
+    const handleBulkQuestionUpload = (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = (evt) => {
+            try {
+                const bstr = evt.target.result;
+                const wb = XLSX.read(bstr, { type: 'binary' });
+                const ws = wb.Sheets[wb.SheetNames[0]];
+                const data = XLSX.utils.sheet_to_json(ws);
+
+                const newQuestions = data.map(row => {
+                    const qText = row["Question Text"] || row["questionText"];
+                    const opts = [
+                        row["Option A"] || row["optionA"],
+                        row["Option B"] || row["optionB"],
+                        row["Option C"] || row["optionC"],
+                        row["Option D"] || row["optionD"]
+                    ];
+                    const correct = row["Correct Option (A/B/C/D)"]?.toString().toUpperCase().trim();
+                    let correctIdx = 0;
+                    if (correct === 'A') correctIdx = 0;
+                    else if (correct === 'B') correctIdx = 1;
+                    else if (correct === 'C') correctIdx = 2;
+                    else if (correct === 'D') correctIdx = 3;
+
+                    return {
+                        questionText: qText,
+                        options: opts.map(o => o?.toString() || ''),
+                        correctOption: correctIdx
+                    };
+                }).filter(q => q.questionText && q.options.every(o => o));
+
+                if (newQuestions.length === 0) {
+                    notify('No valid questions found. Please check the template format.', 'error');
+                    return;
+                }
+
+                const updatedSections = [...sections];
+                updatedSections[activeSectionIndex].questions = [
+                    ...updatedSections[activeSectionIndex].questions,
+                    ...newQuestions
+                ];
+                setSections(updatedSections);
+                notify(`Successfully imported ${newQuestions.length} questions!`);
+            } catch (err) {
+                console.error(err);
+                notify('Failed to process file', 'error');
+            }
+        };
+        reader.readAsBinaryString(file);
+        e.target.value = '';
+    };
 
     const handleAddQuestion = () => {
         if (!qText || qOptions.some(o => !o)) {
@@ -1020,13 +1181,29 @@ const QuestionManagement = ({ exam, onBack, onUpdate, notify }) => {
                     <div className="absolute top-0 right-0 p-4 opacity-5">
                         <Edit3 className="w-24 h-24" />
                     </div>
-                    <h3 className="font-bold mb-6 flex flex-col sm:flex-row sm:items-center justify-between text-cyan-400 text-lg uppercase tracking-wider gap-4">
-                        <div className="flex items-center gap-3">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-6 gap-4">
+                        <h3 className="font-bold flex items-center gap-3 text-cyan-400 text-lg uppercase tracking-wider">
                             {editingIndex !== null ? <Edit3 className="w-5 h-5" /> : <Plus className="w-5 h-5" />}
                             <span>{editingIndex !== null ? 'Edit Question' : 'Add Question'}: <span className="text-white bg-gray-900 px-3 py-1 rounded-lg ml-2">{sections[activeSectionIndex]?.title}</span></span>
+                        </h3>
+                        <div className="flex items-center gap-2">
+                            {editingIndex === null && (
+                                <>
+                                    <button
+                                        onClick={downloadQuestionTemplate}
+                                        className="text-[10px] font-black uppercase tracking-widest px-3 py-1.5 bg-gray-700 hover:bg-gray-600 rounded-lg text-gray-300 transition-all flex items-center gap-2 border border-gray-600"
+                                    >
+                                        <Download className="w-3 h-3" /> Template
+                                    </button>
+                                    <label className="text-[10px] font-black uppercase tracking-widest px-3 py-1.5 bg-cyan-600/10 hover:bg-cyan-600/20 rounded-lg text-cyan-400 transition-all flex items-center gap-2 border border-cyan-500/20 cursor-pointer">
+                                        <Upload className="w-3 h-3" /> Bulk Import
+                                        <input type="file" accept=".xlsx, .xls" onChange={handleBulkQuestionUpload} className="hidden" />
+                                    </label>
+                                </>
+                            )}
+                            {editingIndex !== null && <button onClick={() => { setEditingIndex(null); setQText(''); setQOptions(['', '', '', '']); setQCorrect(0); }} className="text-xs text-gray-400 hover:text-white underline font-bold">Cancel Edit</button>}
                         </div>
-                        {editingIndex !== null && <button onClick={() => { setEditingIndex(null); setQText(''); setQOptions(['', '', '', '']); setQCorrect(0); }} className="text-xs text-gray-400 hover:text-white underline font-bold">Cancel Edit</button>}
-                    </h3>
+                    </div>
                     <div className="space-y-6">
                         <div>
                             <label className="text-xs font-bold text-gray-500 uppercase mb-2 block px-1">Question Text</label>
@@ -1126,7 +1303,7 @@ const QuestionManagement = ({ exam, onBack, onUpdate, notify }) => {
     );
 };
 
-const Monitoring = ({ sessions, setSelectedSessionLog, setActiveTab, onDelete, onDeleteAll, confirmAction }) => (
+const Monitoring = ({ sessions, setSelectedSessionLog, setActiveTab, onDelete, onDeleteAll, confirmAction, fetchSessionById }) => (
     <div className="flex-1 p-4 md:p-8 overflow-y-auto">
         <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4 mb-8">
             <h2 className="text-xl md:text-2xl font-bold">Live Monitoring</h2>
@@ -1192,8 +1369,10 @@ const Monitoring = ({ sessions, setSelectedSessionLog, setActiveTab, onDelete, o
     </div>
 );
 
-const Results = ({ sessions, onDelete, onDeleteAll, notify, confirmAction, fetchSessionById }) => {
+const Results = ({ sessions, students, exams, onDelete, onDeleteAll, notify, confirmAction, fetchSessionById }) => {
     const [searchTerm, setSearchTerm] = useState('');
+    const [showPendingFor, setShowPendingFor] = useState(null); // exam ID
+
 
     // Filter and Group sessions by exam (only completed/submitted sessions)
     const filteredSessions = sessions.filter(s => {
@@ -1206,12 +1385,41 @@ const Results = ({ sessions, onDelete, onDeleteAll, notify, confirmAction, fetch
         return (s.status === 'completed' || s.status === 'submitted' || s.score !== undefined) && matchesSearch;
     });
 
-    const groupedSessions = filteredSessions.reduce((acc, session) => {
-        const examTitle = session.examId?.title || 'Unknown Exam';
-        if (!acc[examTitle]) acc[examTitle] = [];
-        acc[examTitle].push(session);
+    // 1. Group by Exam ID first (to be robust)
+    const examGroups = exams.reduce((acc, exam) => {
+        // Students registered for this exam
+        const registeredStudents = students.filter(s =>
+            s.eligibleExams?.some(e => (e._id || e).toString() === exam._id.toString())
+        );
+
+        // Submissions for this exam
+        const submissions = sessions.filter(s =>
+            s.examId?._id === exam._id || s.examId === exam._id
+        );
+
+        // Registered but not in submissions
+        const pendingStudents = registeredStudents.filter(rs =>
+            !submissions.some(s => s.studentId?._id === rs._id || s.studentId === rs._id)
+        );
+
+        acc[exam._id] = {
+            exam,
+            submissions,
+            pendingStudents,
+            isFullyCompleted: pendingStudents.length === 0 && registeredStudents.length > 0
+        };
         return acc;
     }, {});
+
+    // Filter by search
+    const filteredExamIds = Object.keys(examGroups).filter(id => {
+        const { exam, submissions } = examGroups[id];
+        if (exam.title.toLowerCase().includes(searchTerm.toLowerCase())) return true;
+        return submissions.some(s =>
+            s.studentId?.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            s.studentId?.email?.toLowerCase().includes(searchTerm.toLowerCase())
+        );
+    });
 
     const handleSendEmail = async (sessionId, email) => {
         try {
@@ -1270,7 +1478,7 @@ const Results = ({ sessions, onDelete, onDeleteAll, notify, confirmAction, fetch
                             placeholder="Search by student or exam..."
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
-                            className="w-full bg-gray-800 border border-gray-700 rounded-2xl py-3 pl-11 pr-4 text-sm text-white outline-none focus:border-cyan-500/50 focus:ring-4 focus:ring-cyan-500/5 transition-all shadow-xl"
+                            className="w-full bg-gray-800 border border-gray-700 rounded-2xl py-3 pl-11 pr-4 text-sm text-white outline-none focus:border-cyan-500/50 focus:ring-4 focus:ring-cyan-500/1 transition-all shadow-xl"
                         />
                     </div>
 
@@ -1285,112 +1493,166 @@ const Results = ({ sessions, onDelete, onDeleteAll, notify, confirmAction, fetch
                 </div>
             </div>
 
-            {Object.entries(groupedSessions).map(([examTitle, examSessions]) => (
-                <div key={examTitle} className="mb-10 bg-gray-800 border border-gray-700 rounded-2xl overflow-hidden shadow-2xl">
-                    <div className="bg-gray-900/50 p-5 md:p-6 border-b border-gray-700 flex flex-col sm:flex-row justify-between items-center gap-4">
-                        <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 bg-cyan-500/10 rounded-lg flex items-center justify-center"><Award className="text-cyan-400 w-5 h-5" /></div>
-                            <div>
-                                <h3 className="font-bold text-lg text-white leading-tight">{examTitle}</h3>
-                                <span className="text-xs text-gray-500 font-bold uppercase tracking-widest">{examSessions.length} Submissions</span>
+            {filteredExamIds.map(examId => {
+                const { exam, submissions, pendingStudents, isFullyCompleted } = examGroups[examId];
+                if (submissions.length === 0 && pendingStudents.length === 0) return null;
+
+                return (
+                    <div key={examId} className="mb-10 bg-gray-800 border border-gray-700 rounded-2xl overflow-hidden shadow-2xl relative">
+                        <div className="bg-gray-900/50 p-5 md:p-6 border-b border-gray-700 flex flex-col sm:flex-row justify-between items-center gap-4">
+                            <div className="flex items-center gap-4">
+                                <div className={`w-10 h-10 rounded-lg flex items-center justify-center transition-all ${isFullyCompleted ? 'bg-green-500/10' : 'bg-cyan-500/10'}`}>
+                                    {isFullyCompleted ? <CheckCircle className="text-green-400 w-5 h-5" /> : <Award className="text-cyan-400 w-5 h-5" />}
+                                </div>
+                                <div className="min-w-0">
+                                    <div className="flex items-center gap-3">
+                                        <h3 className="font-bold text-lg text-white leading-tight truncate">{exam.title}</h3>
+                                        <span className={`px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-widest border ${isFullyCompleted ? 'bg-green-500/10 text-green-400 border-green-500/20' : 'bg-yellow-500/10 text-yellow-500 border-yellow-500/20 animate-pulse'}`}>
+                                            {isFullyCompleted ? 'Completed' : 'Pending Submissions'}
+                                        </span>
+                                    </div>
+                                    <div className="flex items-center gap-2 mt-1">
+                                        <span className="text-xs text-gray-500 font-bold uppercase tracking-widest">{submissions.length} Submissions</span>
+                                        <span className="text-gray-700 text-xs">•</span>
+                                        <span className={`text-xs font-bold uppercase tracking-widest ${pendingStudents.length > 0 ? 'text-red-400' : 'text-gray-500'}`}>
+                                            {pendingStudents.length} Remaining
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="flex items-center gap-3 w-full sm:w-auto">
+                                {pendingStudents.length > 0 && (
+                                    <button
+                                        onClick={() => setShowPendingFor(showPendingFor === examId ? null : examId)}
+                                        className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-2.5 bg-gray-700 hover:bg-gray-600 text-white rounded-xl text-xs font-bold transition-all border border-gray-600"
+                                        title="See who hasn't submitted"
+                                    >
+                                        <Users className="w-3.5 h-3.5 text-cyan-400" />
+                                        {showPendingFor === examId ? 'Close List' : 'Pending Students'}
+                                    </button>
+                                )}
+                                <button
+                                    onClick={() => handleBulkEmail(exam.title, submissions)}
+                                    className="flex-1 sm:flex-none bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-xl text-sm font-bold flex items-center justify-center gap-2 shadow-lg shadow-blue-900/20 transition-all active:scale-95"
+                                >
+                                    <Mail className="w-4 h-4" /> Send Bulk
+                                </button>
                             </div>
                         </div>
-                        <button
-                            onClick={() => handleBulkEmail(examTitle, examSessions)}
-                            className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-xl text-sm font-bold flex items-center justify-center gap-2 shadow-lg shadow-blue-900/20 transition-all active:scale-95"
-                        >
-                            <Mail className="w-4 h-4" /> Send Bulk Results
-                        </button>
-                    </div>
-                    <div className="overflow-x-auto scrollbar-thin scrollbar-thumb-gray-700">
-                        <table className="w-full text-left min-w-[700px]">
-                            <thead className="bg-gray-900/30 text-[10px] uppercase font-bold text-gray-500 tracking-widest">
-                                <tr>
-                                    <th className="p-5">Student Information</th>
-                                    <th className="p-5">Final Score</th>
-                                    <th className="p-5">Integrity</th>
-                                    <th className="p-5">Submission Status</th>
-                                    <th className="p-5 text-right">Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-gray-700/50">
-                                {examSessions.map(session => (
-                                    <tr key={session._id} className="hover:bg-gray-700/20 border-b border-gray-700/30 last:border-0 transition-colors">
-                                        <td className="p-5">
-                                            <div className="font-bold text-white text-sm">{session.studentId?.name}</div>
-                                            <div className="text-xs text-gray-500 font-mono mt-0.5">{session.studentId?.email}</div>
-                                            <div className="text-[10px] text-cyan-500/80 font-bold uppercase mt-1 px-1.5 py-0.5 bg-cyan-500/5 rounded border border-cyan-500/10 inline-block">
-                                                ID: {session.studentId?.studentId || 'N/A'}
-                                            </div>
-                                            <div className="text-[9px] text-gray-600 font-bold uppercase mt-1 block">
-                                                {session.endTime ? new Date(session.endTime).toLocaleString() : 'N/A'}
-                                            </div>
-                                        </td>
-                                        <td className="p-5">
-                                            <div className="flex flex-col">
-                                                <div className="font-black font-mono text-lg text-cyan-400">
-                                                    {session.score !== undefined ? session.score : '-'}<span className="text-gray-600 text-sm font-medium">/{session.maxScore || '-'}</span>
-                                                </div>
-                                                {session.sectionResults && session.sectionResults.length > 0 && (
-                                                    <div className="mt-2 flex flex-wrap gap-1.5">
-                                                        {session.sectionResults.map((sec, i) => (
-                                                            <div key={i} className="text-[9px] px-1.5 py-0.5 bg-gray-900/80 rounded border border-gray-700 text-gray-400 font-bold uppercase tracking-tighter" title={sec.sectionTitle}>
-                                                                {sec.score}/{sec.maxScore}
-                                                            </div>
-                                                        ))}
-                                                    </div>
-                                                )}
-                                            </div>
-                                        </td>
-                                        <td className="p-5">
-                                            <div className="flex items-center gap-2">
-                                                <div className="flex-1 h-1.5 w-12 bg-gray-900 rounded-full overflow-hidden">
-                                                    <div className={`h-full rounded-full ${session.integrityScore > 80 ? 'bg-green-500' : session.integrityScore > 50 ? 'bg-yellow-500' : 'bg-red-500'}`} style={{ width: `${session.integrityScore}%` }}></div>
-                                                </div>
-                                                <span className={`text-xs font-black font-mono ${session.integrityScore > 80 ? 'text-green-500' : 'text-red-500'}`}>
-                                                    {session.integrityScore}%
-                                                </span>
-                                            </div>
-                                        </td>
-                                        <td className="p-5">
-                                            <span className={`px-2.5 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest border ${session.status === 'completed' || session.status === 'submitted' ? 'bg-green-500/10 text-green-400 border-green-500/20' : 'bg-blue-500/10 text-blue-400 border-blue-500/20'}`}>
-                                                {session.status}
-                                            </span>
-                                        </td>
-                                        <td className="p-5 text-right">
-                                            <div className="flex justify-end gap-2">
-                                                <button
-                                                    onClick={() => fetchSessionById(session._id)}
-                                                    className="p-2 text-cyan-400 hover:bg-cyan-400/10 rounded-lg transition-all"
-                                                    title="View Activity Logs"
-                                                >
-                                                    <FileText className="w-4 h-4" />
-                                                </button>
-                                                <button
-                                                    onClick={() => handleSendEmail(session._id, session.studentId?.email)}
-                                                    className="p-2 text-cyan-400 hover:bg-cyan-400/10 rounded-lg transition-all"
-                                                    title="Email Result"
-                                                >
-                                                    <Send className="w-4 h-4" />
-                                                </button>
-                                                <button
-                                                    onClick={() => onDelete(session._id)}
-                                                    className="p-2 text-red-500 hover:bg-red-500/10 rounded-lg transition-all"
-                                                    title="Delete Result"
-                                                >
-                                                    <Trash2 className="w-4 h-4" />
-                                                </button>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            ))}
 
-            {Object.keys(groupedSessions).length === 0 && (
+                        {showPendingFor === examId && (
+                            <div className="bg-gray-900/80 p-6 border-b border-gray-700 animate-in slide-in-from-top-4 transition-all">
+                                <div className="flex items-center gap-2 text-cyan-400 mb-4">
+                                    <AlertCircle className="w-4 h-4" />
+                                    <span className="text-xs font-black uppercase tracking-widest">Left Students (Not Submitted)</span>
+                                </div>
+                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+                                    {pendingStudents.map(s => (
+                                        <div key={s._id} className="bg-gray-800/50 border border-gray-700 p-3 rounded-xl flex items-center justify-between group">
+                                            <div className="min-w-0">
+                                                <div className="font-bold text-xs text-white truncate">{s.name}</div>
+                                                <div className="text-[10px] text-gray-500 truncate">{s.email}</div>
+                                            </div>
+                                            <div className="text-[10px] font-mono text-cyan-500/50 group-hover:text-cyan-400 transition-colors uppercase ml-2 shrink-0 whitespace-nowrap">
+                                                ID: {s.studentId}
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+
+                        <div className="overflow-x-auto scrollbar-thin scrollbar-thumb-gray-700">
+                            <table className="w-full text-left min-w-[700px]">
+                                <thead className="bg-gray-900/30 text-[10px] uppercase font-bold text-gray-500 tracking-widest">
+                                    <tr>
+                                        <th className="p-5">Student Information</th>
+                                        <th className="p-5">Final Score</th>
+                                        <th className="p-5">Integrity</th>
+                                        <th className="p-5">Submission Status</th>
+                                        <th className="p-5 text-right">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-gray-700/50">
+                                    {submissions.map(session => (
+                                        <tr key={session._id} className="hover:bg-gray-700/20 border-b border-gray-700/30 last:border-0 transition-colors">
+                                            <td className="p-5">
+                                                <div className="font-bold text-white text-sm">{session.studentId?.name}</div>
+                                                <div className="text-xs text-gray-500 font-mono mt-0.5">{session.studentId?.email}</div>
+                                                <div className="text-[10px] text-cyan-500/80 font-bold uppercase mt-1 px-1.5 py-0.5 bg-cyan-500/5 rounded border border-cyan-500/10 inline-block whitespace-nowrap">
+                                                    ID: {session.studentId?.studentId || 'N/A'}
+                                                </div>
+                                                <div className="text-[9px] text-gray-600 font-bold uppercase mt-1 block">
+                                                    {session.endTime ? new Date(session.endTime).toLocaleString() : 'N/A'}
+                                                </div>
+                                            </td>
+                                            <td className="p-5">
+                                                <div className="flex flex-col">
+                                                    <div className="font-black font-mono text-lg text-cyan-400">
+                                                        {session.score !== undefined ? session.score : '-'}<span className="text-gray-600 text-sm font-medium">/{session.maxScore || '-'}</span>
+                                                    </div>
+                                                    {session.sectionResults && session.sectionResults.length > 0 && (
+                                                        <div className="mt-2 flex flex-wrap gap-1.5">
+                                                            {session.sectionResults.map((sec, i) => (
+                                                                <div key={i} className="text-[9px] px-1.5 py-0.5 bg-gray-900/80 rounded border border-gray-700 text-gray-400 font-bold uppercase tracking-tighter" title={sec.sectionTitle}>
+                                                                    {sec.score}/{sec.maxScore}
+                                                                </div>
+                                                            ))}
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            </td>
+                                            <td className="p-5">
+                                                <div className="flex items-center gap-2">
+                                                    <div className="flex-1 h-1.5 w-12 bg-gray-900 rounded-full overflow-hidden">
+                                                        <div className={`h-full rounded-full ${session.integrityScore > 80 ? 'bg-green-500' : session.integrityScore > 50 ? 'bg-yellow-500' : 'bg-red-500'}`} style={{ width: `${session.integrityScore}%` }}></div>
+                                                    </div>
+                                                    <span className={`text-xs font-black font-mono ${session.integrityScore > 80 ? 'text-green-500' : 'text-red-500'}`}>
+                                                        {session.integrityScore}%
+                                                    </span>
+                                                </div>
+                                            </td>
+                                            <td className="p-5">
+                                                <span className={`px-2.5 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest border ${session.status === 'completed' || session.status === 'submitted' ? 'bg-green-500/10 text-green-400 border-green-500/20' : 'bg-blue-500/10 text-blue-400 border-blue-500/20'}`}>
+                                                    {session.status}
+                                                </span>
+                                            </td>
+                                            <td className="p-5 text-right">
+                                                <div className="flex justify-end gap-2">
+                                                    <button
+                                                        onClick={() => fetchSessionById(session._id)}
+                                                        className="p-2 text-cyan-400 hover:bg-cyan-400/10 rounded-lg transition-all"
+                                                        title="View Activity Logs"
+                                                    >
+                                                        <FileText className="w-4 h-4" />
+                                                    </button>
+                                                    <button
+                                                        onClick={() => handleSendEmail(session._id, session.studentId?.email)}
+                                                        className="p-2 text-cyan-400 hover:bg-cyan-400/10 rounded-lg transition-all"
+                                                        title="Email Result"
+                                                    >
+                                                        <Send className="w-4 h-4" />
+                                                    </button>
+                                                    <button
+                                                        onClick={() => onDelete(session._id)}
+                                                        className="p-2 text-red-500 hover:bg-red-500/10 rounded-lg transition-all"
+                                                        title="Delete Result"
+                                                    >
+                                                        <Trash2 className="w-4 h-4" />
+                                                    </button>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                );
+            })}
+
+            {filteredExamIds.length === 0 && (
                 <div className="text-center py-24 bg-gray-800/10 rounded-3xl border-2 border-dashed border-gray-800/50">
                     <Award className="w-12 h-12 text-gray-700 mx-auto mb-4 opacity-30" />
                     <p className="text-gray-500 font-bold">No exam results available yet.</p>
@@ -1826,10 +2088,10 @@ function AdminDashboard() {
                     )}
                     {activeTab === 'create-exam' && <CreateExam fetchExams={fetchExams} setActiveTab={setActiveTab} notify={notify} />}
                     {activeTab === 'students' && <StudentManagement students={students} setStudents={setStudents} exams={exams} onDelete={handleDeleteStudent} notify={notify} confirmAction={confirmAction} fetchStudents={fetchStudents} />}
-                    {activeTab === 'monitoring' && <Monitoring sessions={sessions} setSelectedSessionLog={setSelectedSessionLog} setActiveTab={setActiveTab} onDelete={handleDeleteSession} onDeleteAll={handleDeleteAllSessions} confirmAction={confirmAction} />}
+                    {activeTab === 'monitoring' && <Monitoring sessions={sessions} setSelectedSessionLog={setSelectedSessionLog} setActiveTab={setActiveTab} onDelete={handleDeleteSession} onDeleteAll={handleDeleteAllSessions} confirmAction={confirmAction} fetchSessionById={fetchSessionById} />}
                     {activeTab === 'view-log' && <ViewLog selectedSessionLog={selectedSessionLog} setActiveTab={setActiveTab} />}
                     {activeTab === 'view-questions' && <QuestionManagement exam={selectedExamForQuestions} onBack={() => { setActiveTab('dashboard'); setSelectedExamForQuestions(null); }} onUpdate={handleUpdateExam} notify={notify} />}
-                    {activeTab === 'results' && <Results sessions={sessions} onDelete={handleDeleteSession} onDeleteAll={handleDeleteAllSessions} notify={notify} confirmAction={confirmAction} fetchSessionById={fetchSessionById} />}
+                    {activeTab === 'results' && <Results sessions={sessions} students={students} exams={exams} onDelete={handleDeleteSession} onDeleteAll={handleDeleteAllSessions} notify={notify} confirmAction={confirmAction} fetchSessionById={fetchSessionById} />}
                     {activeTab === 'settings' && <SettingsPage />}
                 </main>
             </div>

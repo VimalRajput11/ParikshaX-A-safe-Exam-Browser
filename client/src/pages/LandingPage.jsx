@@ -135,7 +135,7 @@ function LandingPage() {
                                 <input
                                     type="text"
                                     value={examCode}
-                                    onChange={(e) => setExamCode(e.target.value)}
+                                    onChange={(e) => setExamCode(e.target.value.replace(/\s/g, ''))}
                                     placeholder="EXAM-1234-5678"
                                     className="w-full bg-gray-800/50 border border-gray-700 focus:border-cyan-500/50 focus:ring-4 focus:ring-cyan-500/10 rounded-xl py-3 pl-12 pr-4 text-white placeholder-gray-500 transition-all outline-none"
                                 />
@@ -149,7 +149,7 @@ function LandingPage() {
                                 <input
                                     type="text"
                                     value={candidateId}
-                                    onChange={(e) => setCandidateId(e.target.value)}
+                                    onChange={(e) => setCandidateId(e.target.value.replace(/\s/g, ''))}
                                     placeholder="Enter your ID"
                                     className="w-full bg-gray-800/50 border border-gray-700 focus:border-cyan-500/50 focus:ring-4 focus:ring-cyan-500/10 rounded-xl py-3 pl-12 pr-4 text-white placeholder-gray-500 transition-all outline-none"
                                 />
