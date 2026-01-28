@@ -8,6 +8,7 @@ exports.getAllExams = async (req, res) => {
         const exams = await Exam.find().populate('createdBy', 'name email');
         res.json({ success: true, exams });
     } catch (error) {
+        console.error('Error in getAllExams:', error);
         res.status(500).json({ error: error.message });
     }
 };

@@ -8,7 +8,12 @@ dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 5000;
 
-app.use(cors());
+app.set('trust proxy', 1); // Trust first proxy (Vercel)
+
+app.use(cors({
+    origin: '*',
+    credentials: true
+}));
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ limit: '10mb', extended: true }));
 
@@ -21,6 +26,16 @@ app.get('/', (req, res) => {
     res.send('ParikshaX API is running');
 });
 
+// Health Check Route
+app.get('/api/health', (req, res) => {
+    const dbState = mongoose.connection.readyState;
+    const states = { 0: 'disconnected', 1: 'connected', 2: 'connecting', 3: 'disconnecting' };
+    res.json({
+        status: dbState === 1 ? 'ok' : 'error',
+        dbState: states[dbState] || 'unknown',
+        timestamp: new Date()
+    });
+});
 
 // API Routes
 app.use('/api/exams', examRoutes);
