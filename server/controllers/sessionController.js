@@ -1,11 +1,12 @@
 const ExamSession = require('../models/ExamSession');
 const crypto = require('crypto');
 const emailService = require('../utils/emailService');
+const mongoose = require('mongoose');
 
 // Start a new exam session
 exports.startSession = async (req, res) => {
     try {
-        const { examId, studentId, consentGiven } = req.body;
+        let { examId, studentId, consentGiven } = req.body;
 
         if (!consentGiven) {
             return res.status(400).json({
@@ -13,31 +14,41 @@ exports.startSession = async (req, res) => {
             });
         }
 
+        // Cast to ObjectId for precise matching
+        const sId = new mongoose.Types.ObjectId(studentId);
+        const eId = new mongoose.Types.ObjectId(examId);
+
         // --- DUPLICATE CHECK ---
-        // Check if student already has a session for this exam
+
+        // 1. Check for ANY finished session (Block Re-entry)
+        const finishedSession = await ExamSession.findOne({
+            examId: eId,
+            studentId: sId,
+            status: { $in: ['completed', 'submitted', 'terminated'] }
+        });
+
+        if (finishedSession) {
+            return res.status(400).json({
+                success: false,
+                error: `You have already finished this exam (Status: ${finishedSession.status}).`,
+                alreadyCompleted: true
+            });
+        }
+
+        // 2. Check for in-progress session (Allow Resumption)
         const existingSession = await ExamSession.findOne({
-            examId,
-            studentId
+            examId: eId,
+            studentId: sId,
+            status: 'in_progress'
         }).sort({ createdAt: -1 });
 
         if (existingSession) {
-            if (existingSession.status === 'completed' || existingSession.status === 'submitted') {
-                return res.status(400).json({
-                    success: false,
-                    error: 'You have already completed this exam.',
-                    alreadyCompleted: true
-                });
-            }
-
-            if (existingSession.status === 'in_progress') {
-                // Return the existing in-progress session (Resumes on refresh)
-                return res.status(200).json({
-                    success: true,
-                    sessionId: existingSession._id,
-                    message: 'Resuming existing exam session',
-                    resumed: true
-                });
-            }
+            return res.status(200).json({
+                success: true,
+                sessionId: existingSession._id,
+                message: 'Resuming existing exam session',
+                resumed: true
+            });
         }
         // -----------------------
 
@@ -85,37 +96,48 @@ exports.logEvent = async (req, res) => {
             metadata: metadata || {}
         });
 
-        // Update metrics based on event type
+        // Initialize metrics if they don't exist (safety for older sessions)
+        if (!session.metrics) session.metrics = {};
+
+        // Update metrics based on event type safely
         switch (eventType) {
             case 'tab_switch':
-                session.metrics.tabSwitchCount += 1;
+                session.metrics.tabSwitchCount = (session.metrics.tabSwitchCount || 0) + 1;
                 break;
             case 'focus_lost':
-                session.metrics.totalFocusLostDuration += (duration || 0);
+                session.metrics.totalFocusLostDuration = (session.metrics.totalFocusLostDuration || 0) + (duration || 0);
                 break;
             case 'face_absent':
-                session.metrics.faceAbsentCount += 1;
+                session.metrics.faceAbsentCount = (session.metrics.faceAbsentCount || 0) + 1;
                 break;
             case 'gaze_deviation':
-                session.metrics.gazeDeviationCount += 1;
+                session.metrics.gazeDeviationCount = (session.metrics.gazeDeviationCount || 0) + 1;
                 break;
             case 'audio_spike':
-                session.metrics.audioSpikeCount += 1;
+                session.metrics.audioSpikeCount = (session.metrics.audioSpikeCount || 0) + 1;
                 break;
             case 'warning_shown':
-                session.metrics.warningsShown += 1;
+                session.metrics.warningsShown = (session.metrics.warningsShown || 0) + 1;
+                break;
+            case 'environment_breach':
+                session.metrics.lockdownBreachCount = (session.metrics.lockdownBreachCount || 0) + 1;
                 break;
         }
 
-        // Calculate Integrity Score
+        // Calculate Integrity Score with safer math
         let score = 100;
-        score -= Math.min(session.metrics.tabSwitchCount * 5, 30);
-        score -= Math.min(Math.floor(session.metrics.totalFocusLostDuration / 10) * 2, 20);
-        score -= Math.min(session.metrics.faceAbsentCount * 3, 20);
-        score -= Math.min(session.metrics.gazeDeviationCount * 2, 15);
-        score -= Math.min(session.metrics.audioSpikeCount * 2, 15);
+        const tabDeduction = (session.metrics.tabSwitchCount || 0) * 5;
+        const focusDeduction = (session.metrics.totalFocusLostDuration || 0) * 0.5;
+        const faceDeduction = (session.metrics.faceAbsentCount || 0) * 3;
+        const gazeDeduction = (session.metrics.gazeDeviationCount || 0) * 2;
+        const audioDeduction = (session.metrics.audioSpikeCount || 0) * 2;
+        const breachDeduction = (session.metrics.lockdownBreachCount || 0) * 10;
 
-        session.integrityScore = Math.max(score, 0);
+        score -= (tabDeduction + focusDeduction + faceDeduction + gazeDeduction + audioDeduction + breachDeduction);
+
+        // Round to 2 decimal places to avoid floating-point precision errors
+        session.integrityScore = Math.max(Math.round(score * 100) / 100, 0);
+
 
         // Determine risk level
         if (session.integrityScore >= 80) {
@@ -126,6 +148,8 @@ exports.logEvent = async (req, res) => {
             session.riskLevel = 'high';
         }
 
+        // Mark metrics as modified to ensure Mongoose saves the nested object
+        session.markModified('metrics');
         await session.save();
 
         res.json({
@@ -134,6 +158,21 @@ exports.logEvent = async (req, res) => {
             riskLevel: session.riskLevel
         });
     } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+};
+
+// Update live snapshot
+exports.updateSnapshot = async (req, res) => {
+    try {
+        const { sessionId } = req.params;
+        const { snapshot } = req.body;
+
+        await ExamSession.findByIdAndUpdate(sessionId, { lastSnapshot: snapshot });
+
+        res.json({ success: true });
+    } catch (error) {
+        console.error(`[Snapshot] Error updating snapshot:`, error.message);
         res.status(500).json({ error: error.message });
     }
 };
@@ -278,14 +317,14 @@ exports.endSession = async (req, res) => {
     }
 };
 
-// Get session details
+// Get single session with full details
 exports.getSession = async (req, res) => {
     try {
         const { sessionId } = req.params;
 
         const session = await ExamSession.findById(sessionId)
             .populate('examId')
-            .populate('studentId', 'name email');
+            .populate('studentId', 'name email studentId');
 
         if (!session) {
             return res.status(404).json({ error: 'Session not found' });
@@ -339,19 +378,22 @@ exports.verifyReport = async (req, res) => {
     }
 };
 
-// Get all sessions
+// Get all sessions - Optimized for list view (excludes heavy logs)
 exports.getAllSessions = async (req, res) => {
     try {
         const sessions = await ExamSession.find()
+            .select('-eventLogs -answers') // Exclude heavy data for performance
             .populate('examId', 'title')
             .populate('studentId', 'name email studentId')
-            .sort({ createdAt: -1 });
+            .sort({ startTime: -1 });
 
         res.json({ success: true, sessions });
     } catch (error) {
         res.status(500).json({ error: error.message });
     }
 };
+
+
 
 // Delete session
 exports.deleteSession = async (req, res) => {

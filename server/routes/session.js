@@ -11,6 +11,9 @@ router.get('/', sessionController.getAllSessions);
 // Log event during exam
 router.post('/:sessionId/event', sessionController.logEvent);
 
+// Update live snapshot
+router.post('/:sessionId/snapshot', sessionController.updateSnapshot);
+
 // Submit answer
 router.post('/:sessionId/answer', sessionController.submitAnswer);
 

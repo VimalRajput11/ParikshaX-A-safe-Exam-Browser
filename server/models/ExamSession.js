@@ -3,7 +3,7 @@ const mongoose = require('mongoose');
 const EventLogSchema = new mongoose.Schema({
     eventType: {
         type: String,
-        enum: ['tab_switch', 'focus_lost', 'face_absent', 'gaze_deviation', 'audio_spike', 'warning_shown'],
+        enum: ['tab_switch', 'focus_lost', 'face_absent', 'gaze_deviation', 'audio_spike', 'warning_shown', 'environment_breach'],
         required: true
     },
     timestamp: {
@@ -51,7 +51,8 @@ const ExamSessionSchema = new mongoose.Schema({
         faceAbsentCount: { type: Number, default: 0 },
         gazeDeviationCount: { type: Number, default: 0 },
         audioSpikeCount: { type: Number, default: 0 },
-        warningsShown: { type: Number, default: 0 }
+        warningsShown: { type: Number, default: 0 },
+        lockdownBreachCount: { type: Number, default: 0 }
     },
 
     // Integrity Score
@@ -95,12 +96,18 @@ const ExamSessionSchema = new mongoose.Schema({
         timestamp: Date
     }],
 
+    lastSnapshot: String, // Store latest B64 frame for live monitoring
+
     createdAt: {
         type: Date,
         default: Date.now
     }
-});
+}, { bufferCommands: false });
 
-
+// Add Indexes for performance
+ExamSessionSchema.index({ examId: 1, startTime: -1 });
+ExamSessionSchema.index({ studentId: 1, status: 1 });
+ExamSessionSchema.index({ status: 1, integrityScore: -1 });
+ExamSessionSchema.index({ createdAt: -1 });
 
 module.exports = mongoose.model('ExamSession', ExamSessionSchema);

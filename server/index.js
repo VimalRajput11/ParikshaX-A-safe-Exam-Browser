@@ -9,7 +9,8 @@ const app = express();
 const PORT = process.env.PORT || 5000;
 
 app.use(cors());
-app.use(express.json());
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ limit: '10mb', extended: true }));
 
 // Import Routes
 const examRoutes = require('./routes/exam');
@@ -27,29 +28,53 @@ app.use('/api/sessions', sessionRoutes);
 app.use('/api/students', require('./routes/student'));
 
 // MongoDB Connection Utility for Serverless
+// MongoDB Connection Utility
 const connectDB = async () => {
-    if (mongoose.connection.readyState >= 1) return;
+    // If already connected, do nothing
+    if (mongoose.connection.readyState === 1) return;
+
+    // If connecting, wait for it to finish (max 5s)
+    if (mongoose.connection.readyState === 2) {
+        console.log('DB is connecting... waiting...');
+        return new Promise((resolve) => {
+            let attempts = 0;
+            const check = setInterval(() => {
+                attempts++;
+                if (mongoose.connection.readyState === 1 || attempts > 50) {
+                    clearInterval(check);
+                    resolve();
+                }
+            }, 100);
+        });
+    }
 
     try {
+        const maskedUri = process.env.MONGO_URI ? process.env.MONGO_URI.replace(/:([^@]+)@/, ':****@') : 'UNDEFINED';
+        console.log(`Connecting to MongoDB: ${maskedUri}`);
         await mongoose.connect(process.env.MONGO_URI, {
-            serverSelectionTimeoutMS: 5000, // Timeout after 5s instead of 30s
+            serverSelectionTimeoutMS: 10000,
             socketTimeoutMS: 45000,
+            bufferCommands: false, // Disable buffering to see real errors immediately
         });
         console.log('MongoDB database connection established successfully');
     } catch (err) {
-        console.error('MongoDB connection error:', err);
-        // Do not throw here, let the request fail gracefully later or retry
+        console.error('MongoDB connection error:', err.message);
     }
 };
 
+// Global Mongoose settings
+mongoose.set('bufferCommands', false);
+
 // Middleware to ensure DB connection
 app.use(async (req, res, next) => {
-    await connectDB();
+    if (mongoose.connection.readyState !== 1) {
+        await connectDB();
+    }
     next();
 });
 
-// Initial connection attempt
-connectDB();
+// Initial connection attempt with error handling
+connectDB().catch(err => console.error('Initial DB connection failed:', err));
 
 if (process.env.NODE_ENV !== 'production') {
     app.listen(PORT, () => {

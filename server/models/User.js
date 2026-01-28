@@ -36,6 +36,8 @@ const UserSchema = new mongoose.Schema({
         type: Date,
         default: Date.now
     }
-});
+}, { bufferCommands: false });
+
+UserSchema.index({ role: 1, eligibleExams: 1 });
 
 module.exports = mongoose.model('User', UserSchema);
