@@ -21,7 +21,8 @@ import {
     FileSpreadsheet,
     Menu,
     Mail,
-    Send
+    Send,
+    Search
 } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { useNavigate } from 'react-router-dom';
@@ -521,7 +522,7 @@ const StudentManagement = ({ students, setStudents, exams, onDelete, notify, con
     );
 };
 
-const CreateExam = ({ setExams, setActiveTab, notify }) => {
+const CreateExam = ({ fetchExams, setActiveTab, notify }) => {
     const [examTitle, setExamTitle] = useState('');
     const [sections, setSections] = useState([
         { title: 'Quants', duration: 30, questions: [] },
@@ -600,7 +601,7 @@ const CreateExam = ({ setExams, setActiveTab, notify }) => {
             });
             const data = await res.json();
             if (data.success) {
-                setExams(prev => [...prev, data.exam]);
+                await fetchExams(); // Full reload to stay in sync
                 notify('Exam Created Successfully!');
                 setActiveTab('dashboard');
             } else {
@@ -1065,11 +1066,19 @@ const Monitoring = ({ sessions, setSelectedSessionLog, setActiveTab, onDelete, o
                         <Trash2 className="w-4 h-4" />
                     </button>
                     <div className="bg-gray-950 aspect-video flex items-center justify-center relative overflow-hidden">
-                        <Monitor className="text-gray-800 w-16 h-16 group-hover:scale-110 transition-transform duration-500" />
+                        {session.lastSnapshot ? (
+                            <img
+                                src={session.lastSnapshot}
+                                alt="Live Feed"
+                                className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
+                            />
+                        ) : (
+                            <Monitor className="text-gray-800 w-16 h-16 group-hover:scale-110 transition-transform duration-500" />
+                        )}
                         <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent"></div>
                         <div className="absolute top-3 right-3 flex gap-2">
                             <div className="flex items-center gap-1 bg-green-500/20 text-green-400 px-2 py-1 rounded-md text-[10px] font-bold border border-green-500/20">
-                                <span className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse"></span> LIVE
+                                <span className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse"></span> {session.lastSnapshot ? 'LIVE' : 'WAITING'}
                             </div>
                             <div className={`px-2 py-1 rounded-md text-[10px] font-bold border shadow-lg ${session.integrityScore > 80 ? 'bg-cyan-500/20 text-cyan-400 border-cyan-500/20' : 'bg-red-500/20 text-red-400 border-red-500/20'}`}>
                                 Score: {session.integrityScore}%
@@ -1095,15 +1104,25 @@ const Monitoring = ({ sessions, setSelectedSessionLog, setActiveTab, onDelete, o
 );
 
 const Results = ({ sessions, onDelete, onDeleteAll, notify, confirmAction }) => {
-    // Group sessions by exam (only completed/submitted sessions)
-    const groupedSessions = sessions
-        .filter(s => s.status === 'completed' || s.status === 'submitted' || s.score !== undefined)
-        .reduce((acc, session) => {
-            const examTitle = session.examId?.title || 'Unknown Exam';
-            if (!acc[examTitle]) acc[examTitle] = [];
-            acc[examTitle].push(session);
-            return acc;
-        }, {});
+    const [searchTerm, setSearchTerm] = useState('');
+
+    // Filter and Group sessions by exam (only completed/submitted sessions)
+    const filteredSessions = sessions.filter(s => {
+        const matchesSearch =
+            s.studentId?.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            s.studentId?.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            s.studentId?.studentId?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            s.examId?.title?.toLowerCase().includes(searchTerm.toLowerCase());
+
+        return (s.status === 'completed' || s.status === 'submitted' || s.score !== undefined) && matchesSearch;
+    });
+
+    const groupedSessions = filteredSessions.reduce((acc, session) => {
+        const examTitle = session.examId?.title || 'Unknown Exam';
+        if (!acc[examTitle]) acc[examTitle] = [];
+        acc[examTitle].push(session);
+        return acc;
+    }, {});
 
     const handleSendEmail = async (sessionId, email) => {
         try {
@@ -1147,16 +1166,34 @@ const Results = ({ sessions, onDelete, onDeleteAll, notify, confirmAction }) => 
 
     return (
         <div className="flex-1 p-4 md:p-8 overflow-y-auto">
-            <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4 mb-8">
-                <h2 className="text-xl md:text-2xl font-bold">Examination Results</h2>
-                {sessions.length > 0 && (
-                    <button
-                        onClick={onDeleteAll}
-                        className="flex items-center justify-center gap-2 px-4 py-2.5 bg-red-600/20 text-red-400 hover:bg-red-600 hover:text-white border border-red-900/50 rounded-xl transition-all text-sm font-bold shadow-lg shadow-red-900/10 active:scale-95"
-                    >
-                        <Trash2 className="w-4 h-4" /> Clear All History
-                    </button>
-                )}
+            <div className="flex flex-col xl:flex-row justify-between xl:items-center gap-6 mb-10">
+                <div>
+                    <h2 className="text-2xl md:text-3xl font-black text-white">Examination Results</h2>
+                    <p className="text-gray-500 text-sm mt-1">Review and manage student performance across all assessments.</p>
+                </div>
+
+                <div className="flex flex-col sm:flex-row items-center gap-4">
+                    {/* Search Bar */}
+                    <div className="relative w-full sm:w-80 group">
+                        <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500 group-focus-within:text-cyan-400 transition-colors" />
+                        <input
+                            type="text"
+                            placeholder="Search by student or exam..."
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                            className="w-full bg-gray-800 border border-gray-700 rounded-2xl py-3 pl-11 pr-4 text-sm text-white outline-none focus:border-cyan-500/50 focus:ring-4 focus:ring-cyan-500/5 transition-all shadow-xl"
+                        />
+                    </div>
+
+                    {sessions.length > 0 && (
+                        <button
+                            onClick={onDeleteAll}
+                            className="w-full sm:w-auto flex items-center justify-center gap-2 px-6 py-3 bg-red-600/10 text-red-500 hover:bg-red-600 hover:text-white border border-red-900/30 rounded-2xl transition-all text-sm font-black uppercase tracking-widest active:scale-95"
+                        >
+                            <Trash2 className="w-4 h-4" /> Clear All
+                        </button>
+                    )}
+                </div>
             </div>
 
             {Object.entries(groupedSessions).map(([examTitle, examSessions]) => (
@@ -1193,6 +1230,12 @@ const Results = ({ sessions, onDelete, onDeleteAll, notify, confirmAction }) => 
                                         <td className="p-5">
                                             <div className="font-bold text-white text-sm">{session.studentId?.name}</div>
                                             <div className="text-xs text-gray-500 font-mono mt-0.5">{session.studentId?.email}</div>
+                                            <div className="text-[10px] text-cyan-500/80 font-bold uppercase mt-1 px-1.5 py-0.5 bg-cyan-500/5 rounded border border-cyan-500/10 inline-block">
+                                                ID: {session.studentId?.studentId || 'N/A'}
+                                            </div>
+                                            <div className="text-[9px] text-gray-600 font-bold uppercase mt-1 block">
+                                                {session.endTime ? new Date(session.endTime).toLocaleString() : 'N/A'}
+                                            </div>
                                         </td>
                                         <td className="p-5">
                                             <div className="flex flex-col">
@@ -1427,9 +1470,9 @@ function AdminDashboard() {
                     const res = await fetch(`${API_BASE_URL}/exams/${id}`, { method: 'DELETE' });
                     const data = await res.json();
                     if (data.success) {
-                        setExams(exams.filter(e => e._id !== id));
-                        fetchStudents();
-                        fetchSessions();
+                        await fetchExams();
+                        await fetchStudents();
+                        await fetchSessions();
                         notify('Exam deleted successfully');
                     } else {
                         notify(data.error, 'error');
@@ -1451,7 +1494,7 @@ function AdminDashboard() {
                     const res = await fetch(`${API_BASE_URL}/students/${id}`, { method: 'DELETE' });
                     const data = await res.json();
                     if (data.success) {
-                        setStudents(students.filter(s => s._id !== id));
+                        await fetchStudents(); // Refresh complete list and stats
                         notify('Student record deleted');
                     } else {
                         notify(data.error, 'error');
@@ -1473,7 +1516,7 @@ function AdminDashboard() {
                     const res = await fetch(`${API_BASE_URL}/sessions/${id}`, { method: 'DELETE' });
                     const data = await res.json();
                     if (data.success) {
-                        setSessions(sessions.filter(s => s._id !== id));
+                        await fetchSessions(); // Sync with DB
                         notify('Session record deleted');
                     } else {
                         notify(data.error, 'error');
@@ -1495,7 +1538,7 @@ function AdminDashboard() {
                     const res = await fetch(`${API_BASE_URL}/sessions/all`, { method: 'DELETE' });
                     const data = await res.json();
                     if (data.success) {
-                        setSessions([]);
+                        await fetchSessions();
                         notify('All records cleared successfully');
                     } else {
                         notify(data.error, 'error');
@@ -1664,7 +1707,7 @@ function AdminDashboard() {
                             </div>
                         </div>
                     )}
-                    {activeTab === 'create-exam' && <CreateExam setExams={setExams} setActiveTab={setActiveTab} notify={notify} />}
+                    {activeTab === 'create-exam' && <CreateExam fetchExams={fetchExams} setActiveTab={setActiveTab} notify={notify} />}
                     {activeTab === 'students' && <StudentManagement students={students} setStudents={setStudents} exams={exams} onDelete={handleDeleteStudent} notify={notify} confirmAction={confirmAction} fetchStudents={fetchStudents} />}
                     {activeTab === 'monitoring' && <Monitoring sessions={sessions} setSelectedSessionLog={setSelectedSessionLog} setActiveTab={setActiveTab} onDelete={handleDeleteSession} onDeleteAll={handleDeleteAllSessions} confirmAction={confirmAction} />}
                     {activeTab === 'view-log' && <ViewLog selectedSessionLog={selectedSessionLog} setActiveTab={setActiveTab} />}

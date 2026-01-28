@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Shield, Lock, User, Key, ChevronRight, Hash } from 'lucide-react';
 import { API_BASE_URL } from '../config';
+import AlertModal from '../components/AlertModal';
 
 function LandingPage() {
     const navigate = useNavigate();
@@ -18,12 +19,19 @@ function LandingPage() {
     const [examCode, setExamCode] = useState('');
     const [candidateId, setCandidateId] = useState('');
 
+    // Custom Alert State
+    const [alertConfig, setAlertConfig] = useState({ isOpen: false, title: '', message: '', type: 'error', onClose: null });
+
+    const showAlert = (title, message, type = 'error', onClose = null) => {
+        setAlertConfig({ isOpen: true, title, message, type, onClose });
+    };
+
     const handleLogin = async (e) => {
         e.preventDefault();
 
         // Student Validation against Server
         if (!examCode || !candidateId) {
-            alert('Please enter both Exam Code and Candidate ID.');
+            showAlert('Wait a moment', 'Please enter both Exam Code and Candidate ID.', 'warning');
             return;
         }
 
@@ -38,10 +46,14 @@ function LandingPage() {
             const studentRes = await fetch(`${API_BASE_URL}/students/verify`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ studentId: candidateId })
+                body: JSON.stringify({
+                    studentId: candidateId,
+                    examId: examData.exam._id
+                })
             });
-            if (!studentRes.ok) throw new Error('Invalid Candidate ID');
+
             const studentData = await studentRes.json();
+            if (!studentRes.ok) throw new Error(studentData.error || 'Invalid Candidate ID');
             if (!studentData.success) throw new Error('Student not found');
 
             localStorage.setItem('isRegistered', 'true');
@@ -59,7 +71,18 @@ function LandingPage() {
 
         } catch (error) {
             console.error(error);
-            alert(error.message || 'Login Failed');
+            const isAccessDenied = error.message.toLowerCase().includes('already completed') || error.message.toLowerCase().includes('not assigned');
+
+            showAlert(
+                isAccessDenied ? 'Access Denied' : 'Login Failed',
+                error.message || 'Something went wrong. Please check your IDs.',
+                'error',
+                () => {
+                    if (isAccessDenied && window.electronAPI) {
+                        window.electronAPI.quitApp();
+                    }
+                }
+            );
         }
     };
 
@@ -164,6 +187,17 @@ function LandingPage() {
                     </div>
                 )}
             </div>
+
+            <AlertModal
+                isOpen={alertConfig.isOpen}
+                onClose={() => {
+                    if (alertConfig.onClose) alertConfig.onClose();
+                    setAlertConfig(prev => ({ ...prev, isOpen: false }));
+                }}
+                title={alertConfig.title}
+                message={alertConfig.message}
+                type={alertConfig.type}
+            />
         </div>
     );
 }

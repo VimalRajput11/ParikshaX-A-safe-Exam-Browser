@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
     Maximize, Monitor, Eye, Activity, ChevronLeft, ChevronRight, CheckCircle,
     Clock, ClipboardList, Play, AlertCircle, Shield
@@ -7,11 +8,13 @@ import ConsentModal from '../components/ConsentModal';
 import IntegrityReport from '../components/IntegrityReport';
 import ConfirmationModal from '../components/ConfirmationModal';
 import { API_BASE_URL } from '../config';
+import AlertModal from '../components/AlertModal';
 
 // Mock Questions Data
 // MOCK_QUESTIONS removed in favor of dynamic state
 
 function ExamPage() {
+    const navigate = useNavigate();
     const [showConsent, setShowConsent] = useState(true);
     const [consentGiven, setConsentGiven] = useState(false);
     const [showInstructions, setShowInstructions] = useState(false);
@@ -32,6 +35,13 @@ function ExamPage() {
     const [currentSectionIndex, setCurrentSectionIndex] = useState(0);
     const [timeLeft, setTimeLeft] = useState(parseInt(localStorage.getItem('timeLeft') || '0')); // in seconds
     const videoRef = useRef(null);
+
+    // Custom Alert State
+    const [alertConfig, setAlertConfig] = useState({ isOpen: false, title: '', message: '', type: 'error', onClose: null });
+
+    const showAlert = (title, message, type = 'error', onClose = null) => {
+        setAlertConfig({ isOpen: true, title, message, type, onClose });
+    };
 
     // Question State
     const [questions, setQuestions] = useState([]);
@@ -64,11 +74,30 @@ function ExamPage() {
                     }
 
                     // Auto-resume if session exists
-                    if (localStorage.getItem('sessionId')) {
-                        setShowConsent(false);
-                        setShowInstructions(false);
-                        setIsExamActive(true); // Triggers lockdown if not fullscreen, which is perfect
-                        setConsentGiven(true);
+                    const existingSessionId = localStorage.getItem('sessionId');
+                    if (existingSessionId) {
+                        try {
+                            const sessionRes = await fetch(`${API_BASE_URL}/sessions/${existingSessionId}`);
+                            const sessionData = await sessionRes.json();
+
+                            if (sessionData.success && (sessionData.session.status === 'completed' || sessionData.session.status === 'submitted')) {
+                                // Session is already over, clear and quit/redirect
+                                localStorage.removeItem('sessionId');
+                                if (window.electronAPI) {
+                                    window.electronAPI.quitApp();
+                                } else {
+                                    navigate('/');
+                                }
+                                return;
+                            }
+
+                            setShowConsent(false);
+                            setShowInstructions(false);
+                            setIsExamActive(true);
+                            setConsentGiven(true);
+                        } catch (err) {
+                            console.error('Session verify failed', err);
+                        }
                     }
                 }
             } catch (e) { console.error('Failed to load exam', e); }
@@ -135,21 +164,12 @@ function ExamPage() {
         }
     }, [stream]);
 
-    useEffect(() => {
-        // Broad focus tracking for browsers (Chrome/Edge/etc)
-        const handleWindowBlur = () => {
-            if (isExamActive) {
-                logEvent('focus_lost', 0, 'medium');
-                addWarning("Warning: You moved away from the exam window! This is being logged.");
-            }
-        };
+    // Unified Integrity Monitoring consolidated in the next useEffect
 
-        window.addEventListener('blur', handleWindowBlur);
-        return () => window.removeEventListener('blur', handleWindowBlur);
-    }, [isExamActive, sessionId]);
 
     const logEvent = async (eventType, duration = 0, severity = 'low') => {
         if (!sessionId) return;
+        console.log(`[Integrity] Logging ${eventType}...`);
         try {
             const response = await fetch(`${API_BASE_URL}/sessions/${sessionId}/event`, {
                 method: 'POST',
@@ -158,10 +178,11 @@ function ExamPage() {
             });
             const data = await response.json();
             if (data.success) {
+                console.log(`[Integrity] Score Update: ${data.integrityScore}%`);
                 setIntegrityScore(data.integrityScore);
             }
         } catch (error) {
-            console.error('Error logging event:', error);
+            console.error('[Integrity] Error logging event:', error);
         }
     };
 
@@ -170,32 +191,43 @@ function ExamPage() {
 
         const handleVisibilityChange = () => {
             if (document.hidden) {
+                // User switched tabs or minimized
                 setTabSwitches(prev => prev + 1);
-                focusLostStartRef.current = Date.now();
-                addWarning("Tab switch detected! Please return to the exam screen.");
+                if (!focusLostStartRef.current) {
+                    focusLostStartRef.current = Date.now();
+                }
+                addWarning("Security Alert: Tab switch detected! Return immediately.");
                 logEvent('tab_switch', 0, 'medium');
             } else {
+                // User returned
                 if (focusLostStartRef.current) {
                     const duration = (Date.now() - focusLostStartRef.current) / 1000;
                     setFocusLostTime(prev => prev + duration);
-                    logEvent('focus_lost', duration, duration > 10 ? 'high' : 'low');
+                    // Only log if duration is significant to avoid jitter
+                    if (duration > 0.5) {
+                        logEvent('focus_lost', duration, duration > 10 ? 'high' : 'low');
+                    }
                     focusLostStartRef.current = null;
                 }
             }
         };
 
         const handleBlur = () => {
+            // Window lost focus (could be an overlay or switching apps)
             if (!focusLostStartRef.current) {
                 focusLostStartRef.current = Date.now();
-                addWarning("Window focus lost! Click back on the exam.");
+                addWarning("Warning: Exam window lost focus! This event is logged.");
             }
         };
 
         const handleFocus = () => {
+            // Window regained focus
             if (focusLostStartRef.current) {
                 const duration = (Date.now() - focusLostStartRef.current) / 1000;
                 setFocusLostTime(prev => prev + duration);
-                logEvent('focus_lost', duration, duration > 10 ? 'high' : 'low');
+                if (duration > 0.5) {
+                    logEvent('focus_lost', duration, duration > 10 ? 'high' : 'low');
+                }
                 focusLostStartRef.current = null;
             }
         };
@@ -203,7 +235,7 @@ function ExamPage() {
         const handleContextMenu = (e) => e.preventDefault();
         const handleCopyPaste = (e) => {
             e.preventDefault();
-            addWarning("Copy/Paste is disabled during the exam.");
+            addWarning("Security violation: Copy/Paste is disabled.");
             logEvent('warning_shown', 0, 'low');
         };
 
@@ -235,7 +267,7 @@ function ExamPage() {
         };
         document.addEventListener('fullscreenchange', handleFullscreenChange);
         return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
-    }, [isExamActive]);
+    }, [isExamActive, sessionId]);
 
     // Timer Countdown Effect
     useEffect(() => {
@@ -255,6 +287,36 @@ function ExamPage() {
         }
         return () => clearInterval(interval);
     }, [isExamActive, timeLeft]);
+
+    // Live Snapshot Broadcaster
+    useEffect(() => {
+        if (!isExamActive || !sessionId || !stream) return;
+
+        const captureFrame = async () => {
+            if (!videoRef.current) return;
+            try {
+                const canvas = document.createElement('canvas');
+                canvas.width = 320;
+                canvas.height = 240;
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(videoRef.current, 0, 0, canvas.width, canvas.height);
+                const snapshot = canvas.toDataURL('image/jpeg', 0.4); // High compression for speed
+
+                await fetch(`${API_BASE_URL}/sessions/${sessionId}/snapshot`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ snapshot })
+                });
+            } catch (err) {
+                console.warn('Snapshot upload silent fail (network):', err);
+            }
+        };
+
+        // Capture immediately then every 5 seconds
+        captureFrame();
+        const interval = setInterval(captureFrame, 5000);
+        return () => clearInterval(interval);
+    }, [isExamActive, sessionId, stream]);
 
     const handleSectionExpiry = () => {
         if (sections.length > 0 && currentSectionIndex < sections.length - 1) {
@@ -295,7 +357,6 @@ function ExamPage() {
 
     const handleConsentAccept = async () => {
         setConsentGiven(true);
-        setShowConsent(false);
         try {
             const response = await fetch(`${API_BASE_URL}/sessions/start`, {
                 method: 'POST',
@@ -310,18 +371,25 @@ function ExamPage() {
             if (data.success) {
                 setSessionId(data.sessionId);
                 localStorage.setItem('sessionId', data.sessionId); // Save for persistence
+                setShowConsent(false); // Only hide if success
                 setShowInstructions(true); // Show instructions after session start
             } else {
-                alert('Failed to start session: ' + data.error);
+                showAlert('Access Denied', data.error, 'error', () => {
+                    if (window.electronAPI) {
+                        window.electronAPI.quitApp();
+                    } else {
+                        navigate('/');
+                    }
+                });
             }
         } catch (error) {
             console.error('Error starting session:', error);
-            alert('Network error starting session');
+            showAlert('Connection Error', 'Failed to reach proctoring servers. Please check your internet.', 'error');
         }
     };
 
     const handleConsentDecline = () => {
-        alert('You must accept the monitoring consent to take the exam.');
+        showAlert('Consent Required', 'You must accept the proctoring agreement to proceed with the exam.', 'warning');
     };
 
     const handleStartExam = () => {
@@ -331,11 +399,15 @@ function ExamPage() {
 
     const enterFullscreen = () => {
         if (!consentGiven) {
-            alert('Please accept the consent first.');
+            showAlert('Setup Incomplete', 'Please accept the monitoring consent before entering secure mode.', 'warning');
             return;
         }
 
         const proceedToExam = () => {
+            if (!sessionId) {
+                showAlert('Session Expired', 'Your session has timed out. Please log in again.', 'error', () => navigate('/'));
+                return;
+            }
             setIsFullscreen(true);
             setIsExamActive(true);
             if (navigator.keyboard && navigator.keyboard.lock) {
@@ -617,14 +689,30 @@ function ExamPage() {
                         <Activity className="w-24 h-24 text-red-500 mx-auto mb-6" />
                         <h1 className="text-4xl font-bold mb-4 text-red-500">EXAM PAUSED</h1>
                         <h2 className="text-2xl font-bold mb-4 text-white">Environment Lockdown Breached</h2>
-                        <p className="text-gray-300 mb-8 text-lg">
+                        <p className="text-gray-300 mb-6 text-lg">
                             You have exited fullscreen mode. This incident has been logged.
                             <br />
                             You cannot continue the exam until you return to fullscreen.
                         </p>
+
+                        <div className="bg-gray-800/80 rounded-2xl p-6 mb-8 border border-gray-700">
+                            <div className="text-xs text-gray-500 uppercase tracking-widest mb-2 font-bold">Current Integrity Status</div>
+                            <div className="flex items-center justify-center gap-4">
+                                <div className={`text-4xl font-black ${integrityScore >= 80 ? 'text-green-500' : integrityScore >= 60 ? 'text-yellow-500' : 'text-red-500'}`}>
+                                    {integrityScore}%
+                                </div>
+                                <div className="text-left">
+                                    <div className={`text-xs font-black uppercase tracking-wider ${integrityScore >= 60 ? 'text-green-500/50' : 'text-red-500/50'}`}>
+                                        {integrityScore >= 60 ? 'Protocol Intact' : 'High Risk Level'}
+                                    </div>
+                                    <div className="text-[10px] text-gray-500 font-mono">ID: {sessionId?.substring(0, 8)}...</div>
+                                </div>
+                            </div>
+                        </div>
+
                         <button
                             onClick={restoreFullscreen}
-                            className="w-full py-4 rounded-xl bg-red-600 hover:bg-red-700 font-bold text-white text-xl transition-all shadow-lg hover:shadow-red-500/20"
+                            className="w-full py-5 rounded-2xl bg-red-600 hover:bg-red-700 font-black text-white text-xl transition-all shadow-xl shadow-red-900/40 active:scale-95"
                         >
                             Return to Fullscreen to Continue
                         </button>
@@ -870,6 +958,12 @@ function ExamPage() {
                                             {Math.round(focusLostTime)}s
                                         </div>
                                     </div>
+                                    <div className="p-3 bg-gray-800 rounded-lg border border-gray-700 col-span-2">
+                                        <div className="text-xs text-gray-500 mb-1">Lockdown Breaches</div>
+                                        <div className="text-xl font-bold text-red-500">
+                                            {integrityScore < 100 && (100 - integrityScore) >= 10 ? Math.floor((100 - integrityScore) / 10) : 0}
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
 
@@ -891,6 +985,17 @@ function ExamPage() {
                     </div>
                 </div>
             )}
+
+            <AlertModal
+                isOpen={alertConfig.isOpen}
+                onClose={() => {
+                    if (alertConfig.onClose) alertConfig.onClose();
+                    setAlertConfig(prev => ({ ...prev, isOpen: false }));
+                }}
+                title={alertConfig.title}
+                message={alertConfig.message}
+                type={alertConfig.type}
+            />
         </div>
     );
 }
