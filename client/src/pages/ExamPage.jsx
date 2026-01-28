@@ -952,7 +952,7 @@ function ExamPage() {
                                     <div className="text-xs text-gray-500 uppercase tracking-wider mb-1">Integrity Score</div>
                                     <div className="flex items-end gap-2">
                                         <span className={`text-2xl font-bold ${integrityScore >= 80 ? 'text-green-400' : integrityScore >= 60 ? 'text-yellow-400' : 'text-red-400'}`}>
-                                            {integrityScore}%
+                                            {integrityScore.toFixed(2)}%
                                         </span>
                                         <span className="text-xs text-gray-400 mb-1">
                                             {integrityScore >= 80 ? 'Excellent' : integrityScore >= 60 ? 'Fair' : 'Poor'}

@@ -1342,7 +1342,7 @@ const Monitoring = ({ sessions, setSelectedSessionLog, setActiveTab, onDelete, o
                                 <span className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse"></span> {session.lastSnapshot ? 'LIVE' : 'WAITING'}
                             </div>
                             <div className={`px-2 py-1 rounded-md text-[10px] font-bold border shadow-lg ${session.integrityScore > 80 ? 'bg-cyan-500/20 text-cyan-400 border-cyan-500/20' : 'bg-red-500/20 text-red-400 border-red-500/20'}`}>
-                                Score: {session.integrityScore}%
+                                Score: {session.integrityScore?.toFixed(2)}%
                             </div>
                         </div>
                     </div>
@@ -1681,7 +1681,7 @@ const ViewLog = ({ selectedSessionLog, setActiveTab }) => {
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 md:gap-6 mb-8">
                 <div className="bg-gray-800/50 p-5 rounded-2xl border border-gray-700 shadow-xl">
                     <div className="text-gray-500 text-[10px] uppercase font-black tracking-widest mb-1 px-1">Integrity Score</div>
-                    <div className={`text-3xl font-black ${selectedSessionLog.integrityScore > 80 ? 'text-green-400' : 'text-red-400'}`}>{selectedSessionLog.integrityScore}%</div>
+                    <div className={`text-3xl font-black ${selectedSessionLog.integrityScore > 80 ? 'text-green-400' : 'text-red-400'}`}>{selectedSessionLog.integrityScore?.toFixed(2)}%</div>
                 </div>
                 <div className="bg-gray-800/50 p-5 rounded-2xl border border-gray-700 shadow-xl">
                     <div className="text-gray-500 text-[10px] uppercase font-black tracking-widest mb-1 px-1">Tab Switches</div>
