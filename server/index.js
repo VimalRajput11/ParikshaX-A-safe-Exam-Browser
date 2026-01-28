@@ -14,6 +14,7 @@ app.use(cors({
     origin: '*',
     credentials: true
 }));
+app.options('*', cors()); // Enable pre-flight for all routes
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ limit: '10mb', extended: true }));
 
@@ -43,10 +44,13 @@ app.use('/api/sessions', sessionRoutes);
 app.use('/api/students', require('./routes/student'));
 
 // MongoDB Connection Utility for Serverless
-// MongoDB Connection Utility
+// MongoDB Connection Utility for Serverless
 const connectDB = async () => {
     // If already connected, do nothing
-    if (mongoose.connection.readyState === 1) return;
+    if (mongoose.connection.readyState === 1) {
+        console.log('MongoDB is already connected');
+        return;
+    }
 
     // If connecting, wait for it to finish (max 5s)
     if (mongoose.connection.readyState === 2) {
@@ -64,16 +68,23 @@ const connectDB = async () => {
     }
 
     try {
-        const maskedUri = process.env.MONGO_URI ? process.env.MONGO_URI.replace(/:([^@]+)@/, ':****@') : 'UNDEFINED';
+        const uri = process.env.MONGO_URI;
+        if (!uri) {
+            throw new Error('MONGO_URI environment variable is undefined');
+        }
+
+        const maskedUri = uri.replace(/:([^@]+)@/, ':****@');
         console.log(`Connecting to MongoDB: ${maskedUri}`);
-        await mongoose.connect(process.env.MONGO_URI, {
+
+        await mongoose.connect(uri, {
             serverSelectionTimeoutMS: 10000,
             socketTimeoutMS: 45000,
             bufferCommands: false, // Disable buffering to see real errors immediately
         });
         console.log('MongoDB database connection established successfully');
     } catch (err) {
-        console.error('MongoDB connection error:', err.message);
+        console.error('MongoDB connection error:', err);
+        // We do NOT rethrow here to allow the middleware to handle the state check
     }
 };
 
@@ -82,8 +93,23 @@ mongoose.set('bufferCommands', false);
 
 // Middleware to ensure DB connection
 app.use(async (req, res, next) => {
+    // Skip DB check for health route
+    if (req.path === '/api/health') return next();
+
     if (mongoose.connection.readyState !== 1) {
+        console.log('DB not ready (State: ' + mongoose.connection.readyState + '), attempting reconnect...');
         await connectDB();
+
+        // Double check after attempt
+        if (mongoose.connection.readyState !== 1) {
+            console.error('CRITICAL: Database connection failed. Returning 503.');
+            return res.status(503).json({
+                success: false,
+                error: 'Service Unavailable',
+                message: 'Database connection could not be established',
+                dbState: mongoose.connection.readyState
+            });
+        }
     }
     next();
 });
