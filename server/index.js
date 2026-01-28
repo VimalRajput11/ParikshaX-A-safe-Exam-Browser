@@ -43,75 +43,68 @@ app.use('/api/exams', examRoutes);
 app.use('/api/sessions', sessionRoutes);
 app.use('/api/students', require('./routes/student'));
 
-// MongoDB Connection Utility for Serverless
-// MongoDB Connection Utility for Serverless
+// Mongoose Cache for Serverless (Vercel)
+let cached = global.mongoose;
+
+if (!cached) {
+    cached = global.mongoose = { conn: null, promise: null };
+}
+
 const connectDB = async () => {
-    // If already connected, do nothing
-    if (mongoose.connection.readyState === 1) {
-        console.log('MongoDB is already connected');
-        return;
+    // 1. Return active connection
+    if (cached.conn) {
+        return cached.conn;
     }
 
-    // If connecting, wait for it to finish (max 5s)
-    if (mongoose.connection.readyState === 2) {
-        console.log('DB is connecting... waiting...');
-        return new Promise((resolve) => {
-            let attempts = 0;
-            const check = setInterval(() => {
-                attempts++;
-                if (mongoose.connection.readyState === 1 || attempts > 50) {
-                    clearInterval(check);
-                    resolve();
-                }
-            }, 100);
-        });
-    }
-
-    try {
-        const uri = process.env.MONGO_URI;
-        if (!uri) {
-            throw new Error('MONGO_URI environment variable is undefined');
-        }
-
-        const maskedUri = uri.replace(/:([^@]+)@/, ':****@');
-        console.log(`Connecting to MongoDB: ${maskedUri}`);
-
-        await mongoose.connect(uri, {
-            serverSelectionTimeoutMS: 10000,
+    // 2. Establish new connection if not connecting
+    if (!cached.promise) {
+        const opts = {
+            bufferCommands: false, // Fail fast if not connected
+            serverSelectionTimeoutMS: 5000,
             socketTimeoutMS: 45000,
-            bufferCommands: false, // Disable buffering to see real errors immediately
+        };
+
+        const uri = process.env.MONGO_URI;
+        if (!uri) throw new Error('MONGO_URI is missing');
+
+        console.log('Connecting to MongoDB...');
+        cached.promise = mongoose.connect(uri, opts).then((mongoose) => {
+            console.log('MongoDB connection established');
+            return mongoose;
         });
-        console.log('MongoDB database connection established successfully');
-    } catch (err) {
-        console.error('MongoDB connection error:', err);
-        // We do NOT rethrow here to allow the middleware to handle the state check
     }
+
+    // 3. Await connection
+    try {
+        cached.conn = await cached.promise;
+    } catch (e) {
+        cached.promise = null;
+        console.error('MongoDB Connection Error:', e);
+        throw e;
+    }
+
+    return cached.conn;
 };
 
 // Global Mongoose settings
 mongoose.set('bufferCommands', false);
 
-// Middleware to ensure DB connection
+// Middleware to ensure DB is ready for every request
 app.use(async (req, res, next) => {
-    // Skip DB check for health route
+    // Skip health check to avoid recursion
     if (req.path === '/api/health') return next();
 
-    if (mongoose.connection.readyState !== 1) {
-        console.log('DB not ready (State: ' + mongoose.connection.readyState + '), attempting reconnect...');
+    try {
         await connectDB();
-
-        // Double check after attempt
-        if (mongoose.connection.readyState !== 1) {
-            console.error('CRITICAL: Database connection failed. Returning 503.');
-            return res.status(503).json({
-                success: false,
-                error: 'Service Unavailable',
-                message: 'Database connection could not be established',
-                dbState: mongoose.connection.readyState
-            });
-        }
+        next();
+    } catch (error) {
+        console.error('Request blocked due to DB connection failure:', error);
+        res.status(503).json({
+            success: false,
+            error: 'Service Unavailable - DB Connection Failed',
+            details: error.message
+        });
     }
-    next();
 });
 
 // Initial connection attempt with error handling
