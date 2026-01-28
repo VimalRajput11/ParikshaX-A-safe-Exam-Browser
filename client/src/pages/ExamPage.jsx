@@ -319,9 +319,9 @@ function ExamPage() {
             }
         };
 
-        // Capture immediately then every 5 seconds
+        // Capture immediately then every 2 seconds
         captureFrame();
-        const interval = setInterval(captureFrame, 5000);
+        const interval = setInterval(captureFrame, 2000);
         return () => clearInterval(interval);
     }, [isExamActive, sessionId, stream]);
 
