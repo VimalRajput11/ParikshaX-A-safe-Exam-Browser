@@ -152,33 +152,23 @@ const Sidebar = ({ activeTab, setActiveTab, handleLogout, isOpen, setIsOpen }) =
     </>
 );
 
-const StudentManagement = ({ students, setStudents, exams, onDelete, notify, confirmAction, fetchStudents }) => { // Added fetchStudents
-    const [view, setView] = useState('list-exams');
+const StudentManagement = ({ students, setStudents, exams, onDelete, notify, confirmAction, fetchStudents }) => {
+    const [view, setView] = useState('list-exams'); // list-exams, manage-students
     const [selectedExam, setSelectedExam] = useState(null);
-    const [examStudents, setExamStudents] = useState([]);
+    const [searchQuery, setSearchQuery] = useState('');
+    const [activeSubTab, setActiveSubTab] = useState('by-exam'); // 'by-exam' or 'all-students'
 
     // Form States
     const [newName, setNewName] = useState('');
     const [newEmail, setNewEmail] = useState('');
     const [bulkData, setBulkData] = useState('');
 
-    // Fetch students for selected exam
-    useEffect(() => {
-        if (selectedExam) {
-            fetchExamStudents(selectedExam._id);
-        }
-    }, [selectedExam]);
-
-    const fetchExamStudents = async (examId) => {
-        try {
-            const res = await fetch(`${API_BASE_URL}/students/exam/${examId}`);
-            const data = await res.json();
-            if (data.success) setExamStudents(data.students);
-        } catch (err) {
-            console.error(err);
-            notify('Failed to load students', 'error');
-        }
-    };
+    // Derived State: Students assigned to the currently selected exam
+    const examStudents = selectedExam
+        ? students.filter(s => s.eligibleExams?.some(id =>
+            (id._id || id).toString() === selectedExam._id.toString()
+        ))
+        : [];
 
     const handleExamClick = (exam) => {
         setSelectedExam(exam);
@@ -218,8 +208,7 @@ const StudentManagement = ({ students, setStudents, exams, onDelete, notify, con
                 notify(`Student registered successfully!`);
                 setNewName('');
                 setNewEmail('');
-                fetchExamStudents(selectedExam._id);
-                fetchStudents(); // Refresh dashboard stats
+                await fetchStudents(); // Refresh global list - examStudents will update automatically!
             } else {
                 notify(data.error, 'error');
             }
@@ -243,8 +232,7 @@ const StudentManagement = ({ students, setStudents, exams, onDelete, notify, con
             if (data.success) {
                 notify(`Successfully registered ${data.count} students!`);
                 setBulkData('');
-                fetchExamStudents(selectedExam._id);
-                fetchStudents(); // Refresh dashboard stats
+                await fetchStudents(); // Refresh global list
             } else {
                 notify(data.error || 'Failed to register students', 'error');
             }
@@ -376,11 +364,107 @@ const StudentManagement = ({ students, setStudents, exams, onDelete, notify, con
         );
     };
 
+    if (activeSubTab === 'all-students') {
+        const filteredAllStudents = students.filter(s =>
+            s.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            s.email?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            s.studentId?.toLowerCase().includes(searchQuery.toLowerCase())
+        );
+
+        return (
+            <div className="flex-1 overflow-y-auto p-4 md:p-8">
+                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6 mb-8">
+                    <div>
+                        <h2 className="text-2xl font-bold text-white">Global Student Database</h2>
+                        <p className="text-sm text-gray-500 mt-1">Total Registered Students: {students.length}</p>
+                    </div>
+                    <div className="flex flex-col sm:flex-row gap-4 w-full sm:w-auto">
+                        <div className="relative group w-full sm:w-72">
+                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500 group-focus-within:text-cyan-400" />
+                            <input
+                                type="text"
+                                placeholder="Search all students..."
+                                value={searchQuery}
+                                onChange={(e) => setSearchQuery(e.target.value)}
+                                className="w-full bg-gray-800 border border-gray-700 rounded-xl py-2 pl-10 pr-4 text-sm focus:border-cyan-500 outline-none transition-all"
+                            />
+                        </div>
+                        <button onClick={() => { setActiveSubTab('by-exam'); setView('list-exams'); }} className="bg-cyan-600 hover:bg-cyan-700 px-6 py-2 rounded-xl text-sm font-bold transition-all shadow-lg shadow-cyan-900/20">Manage by Exam</button>
+                    </div>
+                </div>
+
+                <div className="bg-gray-800 border border-gray-700 rounded-2xl overflow-hidden shadow-2xl">
+                    <div className="overflow-x-auto">
+                        <table className="w-full text-left">
+                            <thead className="bg-gray-900/50 text-gray-400 text-xs uppercase font-bold tracking-widest border-b border-gray-700">
+                                <tr>
+                                    <th className="p-5">Student Information</th>
+                                    <th className="p-5">Student ID</th>
+                                    <th className="p-5">Exams Assigned</th>
+                                    <th className="p-5 text-right">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-gray-700/50">
+                                {filteredAllStudents.length === 0 && (
+                                    <tr>
+                                        <td colSpan="4" className="p-16 text-center text-gray-600 italic">No students found in global database.</td>
+                                    </tr>
+                                )}
+                                {filteredAllStudents.map((s) => (
+                                    <tr key={s._id} className="hover:bg-gray-700/20 transition-colors">
+                                        <td className="p-5">
+                                            <div className="font-bold text-white">{s.name}</div>
+                                            <div className="text-xs text-gray-500 mt-0.5">{s.email}</div>
+                                        </td>
+                                        <td className="p-5">
+                                            <span className="font-mono text-cyan-400 font-bold bg-gray-900/80 px-2 py-1 rounded text-sm border border-gray-800">{s.studentId || 'N/A'}</span>
+                                        </td>
+                                        <td className="p-5">
+                                            <div className="flex flex-wrap gap-1.5 max-w-[200px]">
+                                                {s.eligibleExams?.map(exam => (
+                                                    <span key={exam._id} className="text-[10px] bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 px-2 py-0.5 rounded-md font-bold truncate max-w-full" title={exam.title}>
+                                                        {exam.title}
+                                                    </span>
+                                                ))}
+                                                {s.eligibleExams?.length === 0 && <span className="text-gray-600 text-[10px] italic">No Exams</span>}
+                                            </div>
+                                        </td>
+                                        <td className="p-5 text-right">
+                                            <button
+                                                onClick={() => onDelete(s._id)}
+                                                className="p-2 text-red-500 hover:bg-red-500/10 rounded-lg transition-all"
+                                                title="Delete Student Permanently"
+                                            >
+                                                <Trash2 className="w-4 h-4" />
+                                            </button>
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        );
+    }
+
     if (view === 'list-exams') {
         return (
             <div className="flex-1 overflow-y-auto p-4 md:p-8">
-                <h2 className="text-2xl font-bold mb-8">Select Exam to Manage Students</h2>
+                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6 mb-10">
+                    <div>
+                        <h2 className="text-2xl md:text-3xl font-black text-white">Student Enrollment</h2>
+                        <p className="text-gray-500 text-sm mt-1">Select an assessment to manage its candidate list.</p>
+                    </div>
+                    <button
+                        onClick={() => setActiveSubTab('all-students')}
+                        className="w-full sm:w-auto flex items-center justify-center gap-2 px-6 py-3 bg-gray-800 border border-gray-700 rounded-2xl hover:bg-gray-700 hover:border-cyan-500 text-sm font-bold transition-all text-white group"
+                    >
+                        <Users className="w-4 h-4 text-cyan-400" /> View All Students ({students.length})
+                    </button>
+                </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
+
                     {exams.map(exam => (
                         <div key={exam._id} onClick={() => handleExamClick(exam)} className="bg-gray-800 border border-gray-700 hover:border-cyan-500 rounded-xl p-5 md:p-6 cursor-pointer transition-all hover:bg-gray-700/50 group">
                             <h3 className="text-lg md:text-xl font-bold group-hover:text-cyan-400 mb-2 truncate">{exam.title}</h3>
@@ -1088,7 +1172,12 @@ const Monitoring = ({ sessions, setSelectedSessionLog, setActiveTab, onDelete, o
                     <div className="p-4 md:p-5">
                         <h3 className="font-bold text-lg truncate text-white mb-1">{session.studentId?.name || 'Unknown Student'}</h3>
                         <p className="text-xs text-gray-500 mb-5 truncate font-medium flex items-center gap-1.5"><FileText className="w-3 h-3" /> {session.examId?.title}</p>
-                        <button onClick={() => { setSelectedSessionLog(session); setActiveTab('view-log'); }} className="w-full py-3 bg-gray-700/50 hover:bg-cyan-600 text-white rounded-xl text-sm transition-all font-bold border border-gray-600 hover:border-cyan-500 shadow-lg active:scale-[0.98]">Review Activity Log</button>
+                        <button
+                            onClick={() => fetchSessionById(session._id)}
+                            className="w-full py-3 bg-gray-700/50 hover:bg-cyan-600 text-white rounded-xl text-sm transition-all font-bold border border-gray-600 hover:border-cyan-500 shadow-lg active:scale-[0.98]"
+                        >
+                            Review Activity Log
+                        </button>
                     </div>
                 </div>
             ))}
@@ -1103,7 +1192,7 @@ const Monitoring = ({ sessions, setSelectedSessionLog, setActiveTab, onDelete, o
     </div>
 );
 
-const Results = ({ sessions, onDelete, onDeleteAll, notify, confirmAction }) => {
+const Results = ({ sessions, onDelete, onDeleteAll, notify, confirmAction, fetchSessionById }) => {
     const [searchTerm, setSearchTerm] = useState('');
 
     // Filter and Group sessions by exam (only completed/submitted sessions)
@@ -1271,6 +1360,13 @@ const Results = ({ sessions, onDelete, onDeleteAll, notify, confirmAction }) => 
                                         <td className="p-5 text-right">
                                             <div className="flex justify-end gap-2">
                                                 <button
+                                                    onClick={() => fetchSessionById(session._id)}
+                                                    className="p-2 text-cyan-400 hover:bg-cyan-400/10 rounded-lg transition-all"
+                                                    title="View Activity Logs"
+                                                >
+                                                    <FileText className="w-4 h-4" />
+                                                </button>
+                                                <button
                                                     onClick={() => handleSendEmail(session._id, session.studentId?.email)}
                                                     className="p-2 text-cyan-400 hover:bg-cyan-400/10 rounded-lg transition-all"
                                                     title="Email Result"
@@ -1417,11 +1513,17 @@ function AdminDashboard() {
         });
     };
 
+    const [isRefreshing, setIsRefreshing] = useState(false);
+
     useEffect(() => {
-        fetchExams();
-        fetchStudents();
-        fetchSessions();
-        const interval = setInterval(fetchSessions, 5000); // Poll every 5 seconds
+        const initFetch = async () => {
+            setIsRefreshing(true);
+            await Promise.all([fetchExams(), fetchStudents(), fetchSessions()]);
+            setIsRefreshing(false);
+        };
+        initFetch();
+
+        const interval = setInterval(fetchSessions, 10000); // Polling every 10 seconds
         return () => clearInterval(interval);
     }, []);
 
@@ -1452,12 +1554,27 @@ function AdminDashboard() {
             const res = await fetch(`${API_BASE_URL}/sessions`);
             const data = await res.json();
             if (data.success) {
-                console.log('Active Sessions:', data.sessions.filter(s => s.status === 'in_progress'));
                 setSessions(data.sessions);
             }
         } catch (err) {
             console.error(err);
             notify('Failed to load sessions', 'error');
+        }
+    };
+
+    const fetchSessionById = async (id) => {
+        try {
+            const res = await fetch(`${API_BASE_URL}/sessions/${id}`);
+            const data = await res.json();
+            if (data.success) {
+                setSelectedSessionLog(data.session);
+                setActiveTab('view-log');
+            } else {
+                notify(data.error, 'error');
+            }
+        } catch (err) {
+            console.error(err);
+            notify('Failed to load session details', 'error');
         }
     };
 
@@ -1712,10 +1829,18 @@ function AdminDashboard() {
                     {activeTab === 'monitoring' && <Monitoring sessions={sessions} setSelectedSessionLog={setSelectedSessionLog} setActiveTab={setActiveTab} onDelete={handleDeleteSession} onDeleteAll={handleDeleteAllSessions} confirmAction={confirmAction} />}
                     {activeTab === 'view-log' && <ViewLog selectedSessionLog={selectedSessionLog} setActiveTab={setActiveTab} />}
                     {activeTab === 'view-questions' && <QuestionManagement exam={selectedExamForQuestions} onBack={() => { setActiveTab('dashboard'); setSelectedExamForQuestions(null); }} onUpdate={handleUpdateExam} notify={notify} />}
-                    {activeTab === 'results' && <Results sessions={sessions} onDelete={handleDeleteSession} onDeleteAll={handleDeleteAllSessions} notify={notify} confirmAction={confirmAction} />}
+                    {activeTab === 'results' && <Results sessions={sessions} onDelete={handleDeleteSession} onDeleteAll={handleDeleteAllSessions} notify={notify} confirmAction={confirmAction} fetchSessionById={fetchSessionById} />}
                     {activeTab === 'settings' && <SettingsPage />}
                 </main>
             </div>
+
+            {/* Refresh Indicator */}
+            {isRefreshing && (
+                <div className="fixed top-6 right-8 bg-cyan-500/10 border border-cyan-500/20 text-cyan-400 px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-3 backdrop-blur-md animate-pulse z-[1000]">
+                    <div className="w-2 h-2 bg-cyan-500 rounded-full"></div>
+                    Updating Data...
+                </div>
+            )}
 
             {/* Notification Overlays */}
             <div className="fixed bottom-0 right-0 p-8 space-y-4 pointer-events-none z-[9999]">
