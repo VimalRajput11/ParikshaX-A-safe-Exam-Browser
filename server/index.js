@@ -60,8 +60,9 @@ const connectDB = async () => {
     if (!cached.promise) {
         const opts = {
             bufferCommands: false, // Fail fast if not connected
-            serverSelectionTimeoutMS: 5000,
+            serverSelectionTimeoutMS: 30000, // Increased to 30s
             socketTimeoutMS: 45000,
+            family: 4 // Force IPv4 compatibility
         };
 
         const uri = process.env.MONGO_URI;
