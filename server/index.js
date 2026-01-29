@@ -19,6 +19,7 @@ app.use(cors({
     origin: [
         'http://localhost:3000',
         'http://localhost:5173',
+        'https://parikshax.vercel.app',
         'https://pariksha-x-a-safe-exam-browser.vercel.app'
     ],
     credentials: true
