@@ -58,7 +58,7 @@ const connectDB = async () => {
     if (!cached.promise) {
         const opts = {
             bufferCommands: true, // Enable buffering for Vercel
-            serverSelectionTimeoutMS: 5000,
+            serverSelectionTimeoutMS: 15000, // Increased to 15s to handle Vercel cold starts
             socketTimeoutMS: 45000,
             maxPoolSize: 1,
         };
