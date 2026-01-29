@@ -110,17 +110,8 @@ exports.sendExamCredentials = async (email, name, examTitle, examCode, studentId
             attachments: []
         };
 
-        // Check for Secure Browser EXE in attachments folder
-        const exePath = path.join(__dirname, '..', 'attachments', 'ParikshaX-Browser.exe');
-        if (fs.existsSync(exePath)) {
-            mailOptions.attachments.push({
-                filename: 'ParikshaX-Browser.exe',
-                path: exePath
-            });
-            console.log(`[Email] Attaching Secure Browser from: ${exePath}`);
-        } else {
-            console.warn(`[Email] Search for attachment failed. File not found at: ${exePath}`);
-        }
+        // Attachments removed per request
+        // const exePath = path.join(__dirname, '..', 'attachments', 'ParikshaX-Browser.exe');
 
         await transporter.sendMail(mailOptions);
     } catch (error) {
