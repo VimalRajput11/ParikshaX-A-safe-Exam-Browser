@@ -43,66 +43,24 @@ app.use('/api/exams', examRoutes);
 app.use('/api/sessions', sessionRoutes);
 app.use('/api/students', require('./routes/student'));
 
-// Mongoose Cache for Serverless (Vercel)
-let cached = global.mongoose;
-
-if (!cached) {
-    cached = global.mongoose = { conn: null, promise: null };
-}
-
+// Simple MongoDB Connection
 const connectDB = async () => {
-    if (cached.conn) {
-        return cached.conn;
-    }
-
-    if (!cached.promise) {
-        const opts = {
-            bufferCommands: true, // Enable buffering for Vercel
-            serverSelectionTimeoutMS: 15000, // Increased to 15s to handle Vercel cold starts
-            socketTimeoutMS: 45000,
-            maxPoolSize: 1,
-        };
-
-        const uri = process.env.MONGO_URI;
-        if (!uri) throw new Error('MONGO_URI is missing');
-
-        console.log('Connecting to MongoDB...');
-        cached.promise = mongoose.connect(uri, opts).then((mongoose) => {
-            console.log('MongoDB connection established');
-            return mongoose;
-        });
-    }
-
     try {
-        cached.conn = await cached.promise;
-    } catch (e) {
-        cached.promise = null;
-        console.error('MongoDB Connection Error:', e);
-        throw e;
+        if (mongoose.connection.readyState === 1) {
+            return;
+        }
+        await mongoose.connect(process.env.MONGO_URI);
+        console.log(`MongoDB Connected`);
+    } catch (error) {
+        console.error(`MongoDB Error: ${error.message}`);
     }
-
-    return cached.conn;
 };
-
-// Global Mongoose settings
-mongoose.set('bufferCommands', true);
 
 // Middleware to ensure DB is ready for every request
 app.use(async (req, res, next) => {
-    // Skip health check to avoid recursion
     if (req.path === '/api/health') return next();
-
-    try {
-        await connectDB();
-        next();
-    } catch (error) {
-        console.error('DB Connection Failed:', error);
-        res.status(503).json({
-            success: false,
-            error: 'Service Unavailable - DB Connection Failed',
-            details: error.message
-        });
-    }
+    await connectDB();
+    next();
 });
 
 // Final Error Handler to catch 500s
