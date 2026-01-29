@@ -57,10 +57,10 @@ const connectDB = async () => {
 
     if (!cached.promise) {
         const opts = {
-            bufferCommands: false,
+            bufferCommands: true, // Enable buffering for Vercel
             serverSelectionTimeoutMS: 5000,
             socketTimeoutMS: 45000,
-            maxPoolSize: 1, // Crucial for Vercel
+            maxPoolSize: 1,
         };
 
         const uri = process.env.MONGO_URI;
@@ -85,7 +85,7 @@ const connectDB = async () => {
 };
 
 // Global Mongoose settings
-mongoose.set('bufferCommands', false);
+mongoose.set('bufferCommands', true);
 
 // Middleware to ensure DB is ready for every request
 app.use(async (req, res, next) => {
