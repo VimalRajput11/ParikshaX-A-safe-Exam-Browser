@@ -51,30 +51,17 @@ if (!cached) {
 }
 
 const connectDB = async () => {
-    // 1. Check active connection state
     if (cached.conn) {
-        if (cached.conn.connection.readyState === 1) {
-            return cached.conn;
-        }
-        console.log('Cached connection is disconnected. Reinitializing...');
-        cached.conn = null;
-        cached.promise = null;
+        return cached.conn;
     }
 
-    // 2. Establish new connection if not connecting
     if (!cached.promise) {
         const opts = {
-            bufferCommands: true, // Enable buffering
-            maxPoolSize: 1, // Minimize connections per lambda
-            serverSelectionTimeoutMS: 5000, // Defualt Vercel timeout
+            bufferCommands: false,
+            serverSelectionTimeoutMS: 5000,
             socketTimeoutMS: 45000,
+            maxPoolSize: 1, // Crucial for Vercel
         };
-
-        // Development overrides
-        if (process.env.NODE_ENV !== 'production') {
-            opts.serverSelectionTimeoutMS = 30000;
-            opts.family = 4;
-        }
 
         const uri = process.env.MONGO_URI;
         if (!uri) throw new Error('MONGO_URI is missing');
@@ -86,7 +73,6 @@ const connectDB = async () => {
         });
     }
 
-    // 3. Await connection
     try {
         cached.conn = await cached.promise;
     } catch (e) {
@@ -99,7 +85,7 @@ const connectDB = async () => {
 };
 
 // Global Mongoose settings
-mongoose.set('bufferCommands', true);
+mongoose.set('bufferCommands', false);
 
 // Middleware to ensure DB is ready for every request
 app.use(async (req, res, next) => {
@@ -110,13 +96,24 @@ app.use(async (req, res, next) => {
         await connectDB();
         next();
     } catch (error) {
-        console.error('Request blocked due to DB connection failure:', error);
+        console.error('DB Connection Failed:', error);
         res.status(503).json({
             success: false,
             error: 'Service Unavailable - DB Connection Failed',
             details: error.message
         });
     }
+});
+
+// Final Error Handler to catch 500s
+app.use((err, req, res, next) => {
+    console.error('Unhandled Error:', err);
+    res.status(500).json({
+        success: false,
+        error: 'Internal Server Error',
+        message: err.message,
+        stack: process.env.NODE_ENV === 'development' ? err.stack : undefined
+    });
 });
 
 // Initial connection attempt with error handling
