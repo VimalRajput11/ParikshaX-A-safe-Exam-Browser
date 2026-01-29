@@ -64,13 +64,15 @@ const connectDB = async () => {
     // 2. Establish new connection if not connecting
     if (!cached.promise) {
         const opts = {
-            bufferCommands: false, // Fail fast if not connected
-            serverSelectionTimeoutMS: 30000,
+            bufferCommands: true, // Enable buffering
+            maxPoolSize: 1, // Minimize connections per lambda
+            serverSelectionTimeoutMS: 5000, // Defualt Vercel timeout
             socketTimeoutMS: 45000,
         };
 
-        // Only force IPv4 in development to fix local DNS issues
+        // Development overrides
         if (process.env.NODE_ENV !== 'production') {
+            opts.serverSelectionTimeoutMS = 30000;
             opts.family = 4;
         }
 
@@ -97,7 +99,7 @@ const connectDB = async () => {
 };
 
 // Global Mongoose settings
-mongoose.set('bufferCommands', false);
+mongoose.set('bufferCommands', true);
 
 // Middleware to ensure DB is ready for every request
 app.use(async (req, res, next) => {
