@@ -85,7 +85,7 @@ exports.sendExamCredentials = async (email, name, examTitle, examCode, studentId
                                                 <div style="margin-bottom: 20px; color: #64748b; font-size: 13px; font-style: italic;">
                                                     * The ParikshaX Secure Browser setup is attached to this email. Please install it before the session.
                                                 </div>
-                                                <a href="${process.env.BROWSER_DOWNLOAD_URL || '#'}" style="background-color: #0080ff; color: #ffffff; padding: 18px 40px; border-radius: 6px; text-decoration: none; font-weight: 700; font-size: 14px; display: inline-block; letter-spacing: 1px; box-shadow: 0 4px 12px rgba(0,128,255,0.3);">DOWNLOAD SECURE BROWSER</a>
+                                                <a href="${process.env.BROWSER_DOWNLOAD_URL || 'https://drive.google.com/file/d/1IOBs_TGSb86pKrox3q0IyDyAwkqosBIr/view?usp=drive_link'}" style="background-color: #0080ff; color: #ffffff; padding: 18px 40px; border-radius: 6px; text-decoration: none; font-weight: 700; font-size: 14px; display: inline-block; letter-spacing: 1px; box-shadow: 0 4px 12px rgba(0,128,255,0.3);">DOWNLOAD SECURE BROWSER</a>
                                             </td>
                                         </tr>
                                     </table>
