@@ -51,19 +51,28 @@ if (!cached) {
 }
 
 const connectDB = async () => {
-    // 1. Return active connection
+    // 1. Check active connection state
     if (cached.conn) {
-        return cached.conn;
+        if (cached.conn.connection.readyState === 1) {
+            return cached.conn;
+        }
+        console.log('Cached connection is disconnected. Reinitializing...');
+        cached.conn = null;
+        cached.promise = null;
     }
 
     // 2. Establish new connection if not connecting
     if (!cached.promise) {
         const opts = {
             bufferCommands: false, // Fail fast if not connected
-            serverSelectionTimeoutMS: 30000, // Increased to 30s
+            serverSelectionTimeoutMS: 30000,
             socketTimeoutMS: 45000,
-            family: 4 // Force IPv4 compatibility
         };
+
+        // Only force IPv4 in development to fix local DNS issues
+        if (process.env.NODE_ENV !== 'production') {
+            opts.family = 4;
+        }
 
         const uri = process.env.MONGO_URI;
         if (!uri) throw new Error('MONGO_URI is missing');
