@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Lock, Mail, ChevronRight, AlertCircle, CheckCircle } from 'lucide-react';
+import { API_BASE_URL } from '../config';
 
 const AdminLogin = () => {
     const [email, setEmail] = useState('');
@@ -9,24 +10,42 @@ const AdminLogin = () => {
     const [loading, setLoading] = useState(false);
     const navigate = useNavigate();
 
-    // Default Credentials
-    const DEFAULT_EMAIL = 'admin@parikshax.com';
-    const DEFAULT_PASSWORD = 'admin';
+    // Prevent access to login page if already authenticated
+    useEffect(() => {
+        const isAuthenticated = localStorage.getItem('adminAuth') === 'true';
+        if (isAuthenticated) {
+            navigate('/admin', { replace: true });
+        }
+    }, [navigate]);
 
-    const handleLogin = (e) => {
+
+
+    const handleLogin = async (e) => {
         e.preventDefault();
         setLoading(true);
         setError('');
 
-        setTimeout(() => {
-            if (email === DEFAULT_EMAIL && password === DEFAULT_PASSWORD) {
+        try {
+            const res = await fetch(`${API_BASE_URL}/admin/login`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email, password })
+            });
+            const data = await res.json();
+
+            if (data.success) {
                 localStorage.setItem('adminAuth', 'true');
+                localStorage.setItem('adminEmail', email); // Store email for password change
                 navigate('/admin');
             } else {
-                setError('Invalid credentials. Please try again.');
+                setError(data.error || 'Invalid credentials');
                 setLoading(false);
             }
-        }, 1000);
+        } catch (err) {
+            console.error(err);
+            setError('Connection failed. Please check server.');
+            setLoading(false);
+        }
     };
 
     return (

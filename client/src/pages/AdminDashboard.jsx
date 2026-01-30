@@ -23,7 +23,8 @@ import {
     Menu,
     Mail,
     Send,
-    Search
+    Search,
+    Lock
 } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { useNavigate } from 'react-router-dom';
@@ -1374,16 +1375,7 @@ const Results = ({ sessions, students, exams, onDelete, onDeleteAll, notify, con
     const [showPendingFor, setShowPendingFor] = useState(null); // exam ID
 
 
-    // Filter and Group sessions by exam (only completed/submitted sessions)
-    const filteredSessions = sessions.filter(s => {
-        const matchesSearch =
-            s.studentId?.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            s.studentId?.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            s.studentId?.studentId?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            s.examId?.title?.toLowerCase().includes(searchTerm.toLowerCase());
 
-        return (s.status === 'completed' || s.status === 'submitted' || s.score !== undefined) && matchesSearch;
-    });
 
     // 1. Group by Exam ID first (to be robust)
     const examGroups = exams.reduce((acc, exam) => {
@@ -1394,13 +1386,21 @@ const Results = ({ sessions, students, exams, onDelete, onDeleteAll, notify, con
 
         // Submissions for this exam
         const submissions = sessions.filter(s =>
-            s.examId?._id === exam._id || s.examId === exam._id
+            (s.examId?._id === exam._id || s.examId === exam._id) &&
+            s.status !== 'in_progress'
         );
 
         // Registered but not in submissions
         const pendingStudents = registeredStudents.filter(rs =>
             !submissions.some(s => s.studentId?._id === rs._id || s.studentId === rs._id)
-        );
+        ).map(student => {
+            const activeSession = sessions.find(s =>
+                (s.studentId?._id === student._id || s.studentId === student._id) &&
+                (s.examId?._id === exam._id || s.examId === exam._id) &&
+                s.status === 'in_progress'
+            );
+            return { ...student, status: activeSession ? 'Started' : 'Not Started' };
+        });
 
         acc[exam._id] = {
             exam,
@@ -1553,6 +1553,9 @@ const Results = ({ sessions, students, exams, onDelete, onDeleteAll, notify, con
                                             <div className="min-w-0">
                                                 <div className="font-bold text-xs text-white truncate">{s.name}</div>
                                                 <div className="text-[10px] text-gray-500 truncate">{s.email}</div>
+                                                <div className={`mt-1 text-[9px] font-black uppercase tracking-widest inline-block px-1.5 py-0.5 rounded ${s.status === 'Started' ? 'bg-yellow-500/10 text-yellow-500 border border-yellow-500/20 animate-pulse' : 'bg-gray-700 text-gray-500 border border-gray-600'}`}>
+                                                    {s.status === 'Started' ? 'In Progress' : 'Not Started'}
+                                                </div>
                                             </div>
                                             <div className="text-[10px] font-mono text-cyan-500/50 group-hover:text-cyan-400 transition-colors uppercase ml-2 shrink-0 whitespace-nowrap">
                                                 ID: {s.studentId}
@@ -1730,17 +1733,111 @@ const ViewLog = ({ selectedSessionLog, setActiveTab }) => {
     );
 };
 
-const SettingsPage = () => (
-    <div className="flex-1 p-8">
-        <h2 className="text-2xl font-bold mb-6">Settings</h2>
-        <div className="bg-gray-800 border-gray-700 rounded-xl p-6">
-            <div className="flex items-center justify-between">
-                <span>Enforce Kiosk Mode</span>
-                <div className="w-12 h-6 bg-green-500 rounded-full"></div>
+const SettingsPage = ({ notify }) => {
+    const [oldPassword, setOldPassword] = useState('');
+    const [newPassword, setNewPassword] = useState('');
+    const [loading, setLoading] = useState(false);
+
+    const handleChangePassword = async (e) => {
+        e.preventDefault();
+        setLoading(true);
+        const email = localStorage.getItem('adminEmail') || 'admin@parikshax.com';
+
+        try {
+            const res = await fetch(`${API_BASE_URL}/admin/change-password`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email, oldPassword, newPassword })
+            });
+            const data = await res.json();
+            if (data.success) {
+                notify('Password changed successfully');
+                setOldPassword('');
+                setNewPassword('');
+            } else {
+                notify(data.error || 'Failed to change password', 'error');
+            }
+        } catch (err) {
+            console.error(err);
+            notify('Server error', 'error');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    return (
+        <div className="flex-1 p-4 md:p-8 overflow-y-auto">
+            <h2 className="text-2xl md:text-3xl font-black text-white mb-6">Settings & Preferences</h2>
+
+            <div className="max-w-3xl space-y-8">
+                {/* General Settings */}
+                <div className="bg-gray-800 border border-gray-700 rounded-2xl p-6 shadow-xl">
+                    <h3 className="text-lg font-bold mb-4 text-white">General Preferences</h3>
+                    <div className="flex items-center justify-between p-4 bg-gray-900/50 rounded-xl border border-gray-800">
+                        <div>
+                            <span className="font-bold text-gray-300 block">Enforce Kiosk Mode</span>
+                            <span className="text-xs text-gray-500">Force full-screen examination window for all students</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                            <div className="text-xs font-bold text-green-500 uppercase tracking-wider">Active</div>
+                            <div className="w-12 h-6 bg-green-500/20 border border-green-500/50 rounded-full flex items-center justify-end px-1 cursor-not-allowed opacity-80" title="Always Enabled">
+                                <div className="w-4 h-4 bg-green-500 rounded-full shadow-lg"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Password Change */}
+                <div className="bg-gray-800 border border-gray-700 rounded-2xl p-6 shadow-xl">
+                    <h3 className="text-lg font-bold mb-6 text-white flex items-center gap-2 border-b border-gray-700 pb-4">
+                        <Lock className="w-5 h-5 text-cyan-400" /> Account Security
+                    </h3>
+                    <form onSubmit={handleChangePassword} className="space-y-5">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div>
+                                <label className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-2 block ml-1">Current Password</label>
+                                <input
+                                    type="password"
+                                    required
+                                    value={oldPassword}
+                                    onChange={(e) => setOldPassword(e.target.value)}
+                                    placeholder="••••••••"
+                                    className="w-full bg-gray-900 border border-gray-700 rounded-xl p-3.5 text-white focus:border-cyan-500 outline-none transition-colors"
+                                />
+                            </div>
+                            <div>
+                                <label className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-2 block ml-1">New Password</label>
+                                <input
+                                    type="password"
+                                    required
+                                    minLength={5}
+                                    value={newPassword}
+                                    onChange={(e) => setNewPassword(e.target.value)}
+                                    placeholder="••••••••"
+                                    className="w-full bg-gray-900 border border-gray-700 rounded-xl p-3.5 text-white focus:border-cyan-500 outline-none transition-colors"
+                                />
+                                <p className="text-[10px] text-gray-500 mt-1.5 ml-1 flex items-center gap-1"><AlertCircle className="w-3 h-3" /> Minimum 5 characters required</p>
+                            </div>
+                        </div>
+                        <div className="pt-2 flex justify-end">
+                            <button
+                                type="submit"
+                                disabled={loading}
+                                className="bg-cyan-600 hover:bg-cyan-700 disabled:opacity-50 disabled:cursor-not-allowed text-white px-8 py-3 rounded-xl font-bold transition-all shadow-lg shadow-cyan-900/20 active:scale-95 flex items-center gap-2"
+                            >
+                                {loading ? (
+                                    <><div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div> Updating...</>
+                                ) : (
+                                    <><Save className="w-4 h-4" /> Update Password</>
+                                )}
+                            </button>
+                        </div>
+                    </form>
+                </div>
             </div>
         </div>
-    </div>
-);
+    );
+};
 
 function AdminDashboard() {
     const navigate = useNavigate();
@@ -1935,14 +2032,21 @@ function AdminDashboard() {
     };
 
     const handleLogout = () => {
-        // Clear auth state
-        localStorage.removeItem('adminAuth');
+        confirmAction(
+            'Confirm Logout',
+            'Are you sure you want to log out?',
+            () => {
+                // Clear auth state
+                localStorage.removeItem('adminAuth');
 
-        // Switch back to locked mode if needed
-        if (window.electronAPI) {
-            window.electronAPI.setExamMode(); // Default back to secure
-        }
-        navigate('/admin/login');
+                // Switch back to locked mode if needed
+                if (window.electronAPI) {
+                    window.electronAPI.setExamMode(); // Default back to secure
+                }
+                navigate('/admin/login');
+            },
+            'danger'
+        );
     };
 
     return (
@@ -2092,7 +2196,7 @@ function AdminDashboard() {
                     {activeTab === 'view-log' && <ViewLog selectedSessionLog={selectedSessionLog} setActiveTab={setActiveTab} />}
                     {activeTab === 'view-questions' && <QuestionManagement exam={selectedExamForQuestions} onBack={() => { setActiveTab('dashboard'); setSelectedExamForQuestions(null); }} onUpdate={handleUpdateExam} notify={notify} />}
                     {activeTab === 'results' && <Results sessions={sessions} students={students} exams={exams} onDelete={handleDeleteSession} onDeleteAll={handleDeleteAllSessions} notify={notify} confirmAction={confirmAction} fetchSessionById={fetchSessionById} />}
-                    {activeTab === 'settings' && <SettingsPage />}
+                    {activeTab === 'settings' && <SettingsPage notify={notify} />}
                 </main>
             </div>
 
