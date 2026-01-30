@@ -5,6 +5,7 @@ const dotenv = require('dotenv');
 const examRoutes = require('./routes/exam');
 const sessionRoutes = require('./routes/session');
 const studentRoutes = require('./routes/student');
+const adminRoutes = require('./routes/admin');
 
 
 dotenv.config();
@@ -73,6 +74,7 @@ app.use(async (req, res, next) => {
 app.use('/api/exams', examRoutes);
 app.use('/api/sessions', sessionRoutes);
 app.use('/api/students', studentRoutes);
+app.use('/api/admin', adminRoutes);
 
 app.use((err, req, res, next) => {
     console.error('🔥 Unhandled Error:', err);
