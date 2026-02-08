@@ -9,6 +9,8 @@ import IntegrityReport from '../components/IntegrityReport';
 import ConfirmationModal from '../components/ConfirmationModal';
 import { API_BASE_URL } from '../config';
 import AlertModal from '../components/AlertModal';
+import FaceDetectionService from '../services/FaceDetectionService';
+
 
 // Mock Questions Data
 // MOCK_QUESTIONS removed in favor of dynamic state
@@ -28,6 +30,8 @@ function ExamPage() {
     const [finalReport, setFinalReport] = useState(null);
     const [integrityScore, setIntegrityScore] = useState(100);
     const [lockdownMode, setLockdownMode] = useState(false);
+    const [lockdownBreachCount, setLockdownBreachCount] = useState(0);
+
     const [showConfirmModal, setShowConfirmModal] = useState(false);
     const [stream, setStream] = useState(null);
     const [cameraConnected, setCameraConnected] = useState(false);
@@ -35,6 +39,22 @@ function ExamPage() {
     const [currentSectionIndex, setCurrentSectionIndex] = useState(0);
     const [timeLeft, setTimeLeft] = useState(parseInt(localStorage.getItem('timeLeft') || '0')); // in seconds
     const videoRef = useRef(null);
+    const [faceScanStatus, setFaceScanStatus] = useState('none'); // none, scanning, verified
+
+
+
+    // Internet Monitoring State
+    const [isOffline, setIsOffline] = useState(!navigator.onLine);
+    const offlineStartTime = useRef(null);
+    const pendingLogs = useRef([]);
+    const sessionIdRef = useRef(sessionId);
+
+    useEffect(() => {
+        sessionIdRef.current = sessionId;
+    }, [sessionId]);
+
+
+
 
     // Custom Alert State
     const [alertConfig, setAlertConfig] = useState({ isOpen: false, title: '', message: '', type: 'error', onClose: null });
@@ -91,11 +111,20 @@ function ExamPage() {
                                 return;
                             }
 
+                            // On resumption, show instructions again so they can enter fullscreen properly
                             setShowConsent(false);
-                            setShowInstructions(false);
-                            setIsExamActive(true);
+                            setShowInstructions(true);
+                            setIsExamActive(false);
+
                             setConsentGiven(true);
+                            if (sessionData.session.integrityScore !== undefined) {
+                                setIntegrityScore(sessionData.session.integrityScore);
+                            }
+                            if (sessionData.session.metrics?.lockdownBreachCount !== undefined) {
+                                setLockdownBreachCount(sessionData.session.metrics.lockdownBreachCount);
+                            }
                         } catch (err) {
+
                             console.error('Session verify failed', err);
                         }
                     }
@@ -106,7 +135,19 @@ function ExamPage() {
         // Prompt for camera early
         startCamera();
 
+        // Load face detection models
+        const loadModels = async () => {
+            try {
+                await FaceDetectionService.loadModels();
+                console.log("Models loaded in ExamPage");
+            } catch (err) {
+                console.error("Failed to load face models:", err);
+            }
+        };
+        loadModels();
+
         return () => {
+
             if (stream) {
                 stream.getTracks().forEach(track => track.stop());
             }
@@ -167,11 +208,55 @@ function ExamPage() {
     // Unified Integrity Monitoring consolidated in the next useEffect
 
 
+    // Internet Connection Monitoring
+    useEffect(() => {
+        const handleOffline = () => {
+            console.warn("Internet Connection Lost");
+            setIsOffline(true);
+            offlineStartTime.current = Date.now();
+            addWarning("Internet Connection Lost! Exam Paused.");
+        };
+
+        const handleOnline = () => {
+            console.log("Internet Connection Restored");
+            setIsOffline(false);
+            const duration = offlineStartTime.current ? (Date.now() - offlineStartTime.current) / 1000 : 0;
+            offlineStartTime.current = null;
+
+            // Log the failure itself
+            logEvent('internet_failure', duration, 'medium');
+
+            // Flush pending logs
+            while (pendingLogs.current.length > 0) {
+                const log = pendingLogs.current.shift();
+                logEvent(log.eventType, log.duration, log.severity);
+            }
+            addWarning("Internet Restored. Exam Resumed.");
+        };
+
+        window.addEventListener('offline', handleOffline);
+        window.addEventListener('online', handleOnline);
+
+        return () => {
+            window.removeEventListener('offline', handleOffline);
+            window.removeEventListener('online', handleOnline);
+        };
+    }, []);
+
     const logEvent = async (eventType, duration = 0, severity = 'low') => {
-        if (!sessionId) return;
-        console.log(`[Integrity] Logging ${eventType}...`);
+        if (!navigator.onLine) {
+            console.warn(`[Integrity] Offline: Queuing ${eventType}...`);
+
+            // Queue the log with current timestamp
+            pendingLogs.current.push({ eventType, duration, severity });
+            return;
+        }
+
+        const sid = sessionIdRef.current;
+        if (!sid) return;
+
         try {
-            const response = await fetch(`${API_BASE_URL}/sessions/${sessionId}/event`, {
+            const response = await fetch(`${API_BASE_URL}/sessions/${sid}/event`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ eventType, duration, severity })
@@ -258,16 +343,87 @@ function ExamPage() {
         };
     }, [isExamActive, sessionId]);
 
+    // Face Scanning Logic (Pre-Exam)
+    useEffect(() => {
+        if (!showInstructions || !stream || faceScanStatus === 'verified') return;
+
+        let scanInterval;
+        const startScanning = async () => {
+            setFaceScanStatus('scanning');
+
+            // Check if we already have a stored reference face for this session
+            const storedDescriptor = localStorage.getItem('referenceFaceDescriptor');
+            if (storedDescriptor && FaceDetectionService.modelsLoaded) {
+                try {
+                    const descriptorArray = new Float32Array(JSON.parse(storedDescriptor));
+                    FaceDetectionService.setReferenceFace(descriptorArray);
+                    console.log("Loaded existing reference face from storage.");
+                } catch (e) {
+                    console.error("Failed to load reference face:", e);
+                }
+            }
+
+            scanInterval = setInterval(async () => {
+                if (videoRef.current && FaceDetectionService.modelsLoaded) {
+                    const detections = await FaceDetectionService.detectFaces(videoRef.current);
+                    if (detections.length === 1) {
+                        const currentDescriptor = detections[0].descriptor;
+
+                        // If a reference face was already loaded/set (e.g. from storage), VERIFY against it
+                        if (FaceDetectionService.referenceDescriptor) {
+                            const matchResult = FaceDetectionService.compareFace(currentDescriptor);
+                            if (matchResult.match) {
+                                console.log("Identity RE-VERIFIED against stored face.");
+                                setFaceScanStatus('verified');
+                                clearInterval(scanInterval);
+                            } else {
+                                console.warn(`Identity Mismatch during resume! Distance: ${matchResult.distance}`);
+                                // Optional: You could show a specific error message state here "Incorrect User"
+                            }
+                        } else {
+                            // First time setup: Set this face as the reference and save it
+                            FaceDetectionService.setReferenceFace(currentDescriptor);
+                            localStorage.setItem('referenceFaceDescriptor', JSON.stringify(Array.from(currentDescriptor)));
+                            console.log("New reference face saved to storage.");
+                            setFaceScanStatus('verified');
+                            clearInterval(scanInterval);
+                        }
+                    }
+                }
+            }, 1000);
+        };
+
+        startScanning();
+        return () => clearInterval(scanInterval);
+    }, [showInstructions, stream, faceScanStatus]);
+
+
     useEffect(() => {
         const handleFullscreenChange = () => {
-            if (!document.fullscreenElement && isExamActive) {
+            const hasFullscreen = !!document.fullscreenElement;
+            console.log(`[Screen Monitor] Change detected. Fullscreen: ${hasFullscreen}, ExamActive: ${isExamActive}`);
+
+            // Electron kiosk mode doesn't use the standard fullscreen API
+            if (window.electronAPI) return;
+
+            if (!hasFullscreen && isExamActive) {
+                // User dropped out of fullscreen during an active exam
+                console.warn("[Screen Monitor] Lockdown BREACH detected!");
                 setLockdownMode(true);
+                setLockdownBreachCount(prev => prev + 1);
                 logEvent('environment_breach', 0, 'high');
+            } else if (hasFullscreen && isExamActive) {
+
+                // User returned or entered fullscreen, ensure lockdown UI is gone
+                console.log("[Screen Monitor] Fullscreen restored/entered.");
+                setLockdownMode(false);
             }
         };
         document.addEventListener('fullscreenchange', handleFullscreenChange);
         return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
     }, [isExamActive, sessionId]);
+
+
 
     // Timer Countdown Effect
     useEffect(() => {
@@ -325,7 +481,69 @@ function ExamPage() {
         return () => clearInterval(interval);
     }, [isExamActive, sessionId, stream]);
 
+    // Live Face Monitoring during Exam
+    useEffect(() => {
+        if (!isExamActive || !sessionId || !stream || !FaceDetectionService.modelsLoaded) return;
+
+        const monitorFace = async () => {
+            if (!videoRef.current) return;
+
+            try {
+                const detections = await FaceDetectionService.detectFaces(videoRef.current);
+
+                if (detections.length === 0) {
+                    const isBlocked = FaceDetectionService.isCameraBlocked(videoRef.current);
+                    console.log(`[Face Monitor] No faces detected. isBlocked: ${isBlocked}`);
+                    if (isBlocked) {
+                        addWarning("Security Alert: Camera appears to be blocked or covered!");
+                        await logEvent('camera_blocked', 0, 'high');
+                    } else {
+                        addWarning("Security Alert: Face not detected! Please stay in view.");
+                        await logEvent('face_absent', 0, 'medium');
+                    }
+                } else {
+                    console.log(`[Face Monitor] Found ${detections.length} faces`);
+                    if (detections.length > 1) {
+                        console.warn(`[Face Monitor] MULTIPLE FACES DETECTED (${detections.length})! Triggering Event.`);
+                        addWarning("Security Alert: Multiple people detected!");
+                        await logEvent('multiple_faces', 0, 'high');
+                    } else {
+
+                        // Exactly one face, verify identity
+                        const result = FaceDetectionService.compareFace(detections[0].descriptor);
+                        if (!result.match) {
+                            addWarning("Security Alert: Face mismatch! Identity verification failed.");
+                            await logEvent('face_mismatch', 0, 'high');
+                        } else {
+                            // Exactly one matching face detected
+                            console.log(`[Face Monitor] Identity verified (Distance: ${result.distance.toFixed(4)})`);
+                            // Check head pose for gaze deviation
+                            const pose = FaceDetectionService.getHeadPose(detections[0].landmarks);
+
+                            if (pose !== 'center') {
+                                // Log gaze deviation but let warning stay if there was one
+                                logEvent('gaze_deviation', 0, 'low');
+                            } else {
+                                // EVERYTHING IS FINE: Clear the warning log from UI
+                                setWarnings([]);
+                            }
+                        }
+                    }
+                }
+
+            } catch (err) {
+                console.warn("[Face Monitor] Error:", err.message);
+            }
+        };
+
+
+        const interval = setInterval(monitorFace, 1000); // Check every 1 second (High Frequency for strict monitoring)
+
+        return () => clearInterval(interval);
+    }, [isExamActive, sessionId, stream, FaceDetectionService.modelsLoaded]);
+
     const handleSectionExpiry = () => {
+
         if (sections.length > 0 && currentSectionIndex < sections.length - 1) {
             const nextIndex = currentSectionIndex + 1;
             setCurrentSectionIndex(nextIndex);
@@ -461,6 +679,8 @@ function ExamPage() {
         localStorage.removeItem('isRegistered');
         localStorage.removeItem('timeLeft');
         localStorage.removeItem('userAnswers');
+        localStorage.removeItem('referenceFaceDescriptor'); // Clear stored face data
+
 
         if (document.exitFullscreen) {
             try { await document.exitFullscreen(); } catch (e) { }
@@ -651,24 +871,44 @@ function ExamPage() {
                                     muted
                                     className="absolute inset-0 w-full h-full object-cover transform scale-x-[-1]"
                                 />
-                                <div className="absolute top-2 left-2 px-2 py-0.5 rounded bg-green-500/20 text-green-400 text-[10px] font-mono border border-green-500/30">
-                                    PREVIEW ACTIVE
+                                <div className={`absolute top-2 left-2 px-2 py-0.5 rounded text-[10px] font-mono border ${faceScanStatus === 'verified'
+                                    ? 'bg-green-500/20 text-green-400 border-green-500/30 font-black'
+                                    : faceScanStatus === 'scanning'
+                                        ? 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30 animate-pulse'
+                                        : 'bg-blue-500/20 text-blue-400 border-blue-500/30'
+                                    }`}>
+                                    {faceScanStatus === 'verified' ? 'FACE VERIFIED' : faceScanStatus === 'scanning' ? 'SCANNING FACE...' : 'PREVIEW ACTIVE'}
                                 </div>
+
                             </div>
 
                             <button
                                 onClick={handleStartExam}
-                                className="w-full group relative overflow-hidden bg-cyan-600 hover:bg-cyan-500 rounded-2xl p-8 transition-all shadow-xl hover:shadow-cyan-500/20"
+                                disabled={cameraConnected && faceScanStatus !== 'verified'}
+                                className={`w-full group relative overflow-hidden rounded-2xl p-8 transition-all shadow-xl 
+                                    ${cameraConnected && faceScanStatus !== 'verified'
+                                        ? 'bg-gray-700 cursor-not-allowed opacity-50'
+                                        : 'bg-cyan-600 hover:bg-cyan-500 hover:shadow-cyan-500/20'}`}
                             >
                                 <div className="relative z-10 flex flex-col items-center gap-2">
-                                    <Play className="w-12 h-12 text-white fill-white mb-2 group-hover:scale-110 transition-transform" />
-                                    <span className="text-2xl font-black text-white uppercase tracking-tighter">Start Assessment</span>
-                                    <span className="text-cyan-200 text-xs font-medium uppercase tracking-widest">
-                                        {cameraConnected ? 'Entry to secure mode' : 'Proceeding without Camera'}
+                                    {cameraConnected && faceScanStatus !== 'verified' ? (
+                                        <div className="w-12 h-12 flex items-center justify-center">
+                                            <div className="w-8 h-8 border-4 border-gray-500 border-t-cyan-400 rounded-full animate-spin"></div>
+                                        </div>
+                                    ) : (
+                                        <Play className="w-12 h-12 text-white fill-white mb-2 group-hover:scale-110 transition-transform" />
+                                    )}
+                                    <span className="text-2xl font-black text-white uppercase tracking-tighter">
+                                        {cameraConnected && faceScanStatus !== 'verified' ? 'Scanning Face...' : 'Start Assessment'}
                                     </span>
+                                    <span className={`text-xs font-medium uppercase tracking-widest ${cameraConnected && faceScanStatus !== 'verified' ? 'text-gray-400' : 'text-cyan-200'}`}>
+                                        {faceScanStatus === 'verified' ? 'Identity Verified • Ready' : cameraConnected ? 'Please look at camera' : 'Proceeding without Camera'}
+                                    </span>
+
                                 </div>
                                 <div className="absolute top-0 left-0 w-full h-full bg-gradient-to-br from-white/10 to-transparent pointer-events-none"></div>
                             </button>
+
                         </div>
                     </div>
                 </div>
@@ -690,8 +930,27 @@ function ExamPage() {
             }}
         >
 
+            {/* Internet Failure Modal */}
+            {isOffline && (
+                <div className="fixed inset-0 bg-black/90 z-[60] flex items-center justify-center p-4 backdrop-blur-sm">
+                    <div className="bg-gray-900 p-8 rounded-2xl shadow-2xl max-w-lg w-full text-center border-2 border-yellow-500 animate-pulse">
+                        <Activity className="w-20 h-20 text-yellow-500 mx-auto mb-6" />
+                        <h1 className="text-3xl font-bold mb-4 text-white">Connection Lost</h1>
+                        <p className="text-gray-300 mb-6 text-lg">
+                            Your internet connection has been interrupted.
+                            <br />
+                            The exam is paused until connection is restored.
+                        </p>
+                        <div className="inline-block px-4 py-2 bg-yellow-500/10 border border-yellow-500/30 rounded-lg text-yellow-400 font-bold animate-pulse">
+                            Reconnecting...
+                        </div>
+                    </div>
+                </div>
+            )}
+
             {lockdownMode && (
                 <div className="fixed inset-0 bg-red-900 z-50 flex items-center justify-center p-4">
+
                     <div className="bg-gray-900 p-8 rounded-2xl shadow-2xl max-w-2xl w-full text-center border-2 border-red-500 animate-pulse">
                         <Activity className="w-24 h-24 text-red-500 mx-auto mb-6" />
                         <h1 className="text-4xl font-bold mb-4 text-red-500">EXAM PAUSED</h1>
@@ -884,6 +1143,8 @@ function ExamPage() {
                                 </div>
                             </div>
 
+
+
                             {/* Navigation Buttons */}
                             <div className="mt-8 flex justify-between">
                                 <button
@@ -979,9 +1240,10 @@ function ExamPage() {
                                     <div className="p-3 bg-gray-800 rounded-lg border border-gray-700 col-span-2">
                                         <div className="text-xs text-gray-500 mb-1">Lockdown Breaches</div>
                                         <div className="text-xl font-bold text-red-500">
-                                            {integrityScore < 100 && (100 - integrityScore) >= 10 ? Math.floor((100 - integrityScore) / 10) : 0}
+                                            {lockdownBreachCount}
                                         </div>
                                     </div>
+
                                 </div>
                             </div>
 

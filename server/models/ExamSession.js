@@ -3,7 +3,12 @@ const mongoose = require('mongoose');
 const EventLogSchema = new mongoose.Schema({
     eventType: {
         type: String,
-        enum: ['tab_switch', 'focus_lost', 'face_absent', 'gaze_deviation', 'audio_spike', 'warning_shown', 'environment_breach'],
+        enum: [
+            'tab_switch', 'focus_lost', 'face_absent', 'gaze_deviation',
+            'audio_spike', 'warning_shown', 'environment_breach',
+            'face_mismatch', 'multiple_faces', 'camera_blocked', 'internet_failure'
+
+        ],
         required: true
     },
     timestamp: {
@@ -52,8 +57,12 @@ const ExamSessionSchema = new mongoose.Schema({
         gazeDeviationCount: { type: Number, default: 0 },
         audioSpikeCount: { type: Number, default: 0 },
         warningsShown: { type: Number, default: 0 },
-        lockdownBreachCount: { type: Number, default: 0 }
+        lockdownBreachCount: { type: Number, default: 0 },
+        faceMismatchCount: { type: Number, default: 0 },
+        multipleFacesCount: { type: Number, default: 0 },
+        cameraBlockedCount: { type: Number, default: 0 }
     },
+
 
     // Integrity Score
     integrityScore: {

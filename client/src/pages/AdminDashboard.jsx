@@ -1681,7 +1681,7 @@ const ViewLog = ({ selectedSessionLog, setActiveTab }) => {
                 </div>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 md:gap-6 mb-8">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 md:gap-6 mb-8">
                 <div className="bg-gray-800/50 p-5 rounded-2xl border border-gray-700 shadow-xl">
                     <div className="text-gray-500 text-[10px] uppercase font-black tracking-widest mb-1 px-1">Integrity Score</div>
                     <div className={`text-3xl font-black ${selectedSessionLog.integrityScore > 80 ? 'text-green-400' : 'text-red-400'}`}>{selectedSessionLog.integrityScore?.toFixed(0)}%</div>
@@ -1694,9 +1694,38 @@ const ViewLog = ({ selectedSessionLog, setActiveTab }) => {
                     <div className="text-gray-500 text-[10px] uppercase font-black tracking-widest mb-1 px-1">Focus Lost Duration</div>
                     <div className="text-3xl font-black text-white">{Math.round(selectedSessionLog.metrics?.totalFocusLostDuration || 0)}<span className="text-sm font-medium text-gray-500 ml-1">sec</span></div>
                 </div>
+                <div className="bg-gray-800/50 p-5 rounded-2xl border border-gray-700 shadow-xl">
+                    <div className="text-gray-500 text-[10px] uppercase font-black tracking-widest mb-1 px-1">Lockdown Breaches</div>
+                    <div className="text-3xl font-black text-white">{selectedSessionLog.metrics?.lockdownBreachCount || 0}</div>
+                </div>
+            </div>
+
+            <div className="grid grid-cols-2 sm:grid-cols-5 gap-4 md:gap-6 mb-8">
+
+                <div className="bg-gray-800/50 p-4 rounded-2xl border border-gray-700 shadow-xl">
+                    <div className="text-gray-500 text-[10px] uppercase font-black tracking-widest mb-1 px-1">Face Absent</div>
+                    <div className="text-2xl font-black text-white">{selectedSessionLog.metrics?.faceAbsentCount || 0}</div>
+                </div>
+                <div className="bg-gray-800/50 p-4 rounded-2xl border border-gray-700 shadow-xl">
+                    <div className="text-gray-500 text-[10px] uppercase font-black tracking-widest mb-1 px-1">Multiple Faces</div>
+                    <div className="text-2xl font-black text-white">{selectedSessionLog.metrics?.multipleFacesCount || 0}</div>
+                </div>
+                <div className="bg-gray-800/50 p-4 rounded-2xl border border-gray-700 shadow-xl">
+                    <div className="text-gray-500 text-[10px] uppercase font-black tracking-widest mb-1 px-1">Gaze Deviations</div>
+                    <div className="text-2xl font-black text-white">{selectedSessionLog.metrics?.gazeDeviationCount || 0}</div>
+                </div>
+                <div className="bg-gray-800/50 p-4 rounded-2xl border border-gray-700 shadow-xl">
+                    <div className="text-gray-500 text-[10px] uppercase font-black tracking-widest mb-1 px-1">Face Mismatch</div>
+                    <div className="text-2xl font-black text-white">{selectedSessionLog.metrics?.faceMismatchCount || 0}</div>
+                </div>
+                <div className="bg-gray-800/50 p-4 rounded-2xl border border-gray-700 shadow-xl">
+                    <div className="text-gray-500 text-[10px] uppercase font-black tracking-widest mb-1 px-1">Camera Blocked</div>
+                    <div className="text-2xl font-black text-white">{selectedSessionLog.metrics?.cameraBlockedCount || 0}</div>
+                </div>
             </div>
 
             <div className="bg-gray-800 p-6 md:p-8 rounded-2xl border border-gray-700 shadow-2xl">
+
                 <h3 className="font-black text-lg uppercase tracking-widest mb-6 flex items-center gap-3 border-b border-gray-700 pb-4">
                     <div className="w-8 h-8 bg-red-500/10 rounded flex items-center justify-center"><AlertTriangle className="text-red-500 w-5 h-5" /></div>
                     Critical Event Timeline

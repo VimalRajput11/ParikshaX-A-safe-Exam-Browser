@@ -77,8 +77,10 @@ exports.logEvent = async (req, res) => {
     try {
         const { sessionId } = req.params;
         const { eventType, duration, severity, metadata } = req.body;
+        console.log(`[Session ${sessionId}] Incoming Event: ${eventType} (${severity})`);
 
         const session = await ExamSession.findById(sessionId);
+
 
         if (!session) {
             return res.status(404).json({ error: 'Session not found' });
@@ -113,27 +115,54 @@ exports.logEvent = async (req, res) => {
             case 'gaze_deviation':
                 session.metrics.gazeDeviationCount = (session.metrics.gazeDeviationCount || 0) + 1;
                 break;
+            case 'face_mismatch':
+                session.metrics.faceMismatchCount = (session.metrics.faceMismatchCount || 0) + 1;
+                break;
             case 'audio_spike':
+
                 session.metrics.audioSpikeCount = (session.metrics.audioSpikeCount || 0) + 1;
                 break;
+            case 'multiple_faces':
+                session.metrics.multipleFacesCount = (session.metrics.multipleFacesCount || 0) + 1;
+                break;
             case 'warning_shown':
+
                 session.metrics.warningsShown = (session.metrics.warningsShown || 0) + 1;
                 break;
             case 'environment_breach':
                 session.metrics.lockdownBreachCount = (session.metrics.lockdownBreachCount || 0) + 1;
                 break;
+            case 'camera_blocked':
+                session.metrics.cameraBlockedCount = (session.metrics.cameraBlockedCount || 0) + 1;
+                break;
+            case 'internet_failure':
+                session.metrics.internetFailureCount = (session.metrics.internetFailureCount || 0) + 1;
+                break;
+
         }
 
-        // Calculate Integrity Score with safer math
-        let score = 100;
-        const tabDeduction = (session.metrics.tabSwitchCount || 0) * 5;
-        const focusDeduction = (session.metrics.totalFocusLostDuration || 0) * 0.5;
-        const faceDeduction = (session.metrics.faceAbsentCount || 0) * 3;
-        const gazeDeduction = (session.metrics.gazeDeviationCount || 0) * 2;
-        const audioDeduction = (session.metrics.audioSpikeCount || 0) * 2;
-        const breachDeduction = (session.metrics.lockdownBreachCount || 0) * 10;
 
-        score -= (tabDeduction + focusDeduction + faceDeduction + gazeDeduction + audioDeduction + breachDeduction);
+        // Calculate Integrity Score with revised weighting
+        let score = 100;
+        const faceDeduction = (session.metrics.faceAbsentCount || 0) * 1;
+        const mismatchDeduction = (session.metrics.faceMismatchCount || 0) * 1;
+        const multipleFaceDeduction = (session.metrics.multipleFacesCount || 0) * 1;
+        const blockedDeduction = (session.metrics.cameraBlockedCount || 0) * 1;
+
+        // Zero-deduction for environment/lockdown events as requested
+        const tabDeduction = (session.metrics.tabSwitchCount || 0) * 5; // Tab switches now deduct 5 points
+        const focusDeduction = (session.metrics.totalFocusLostDuration || 0) * 0.5;
+        const gazeDeduction = (session.metrics.gazeDeviationCount || 0) * 0;
+        const audioDeduction = (session.metrics.audioSpikeCount || 0) * 0;
+        const breachDeduction = (session.metrics.lockdownBreachCount || 0) * 10; // Lockdown breaches deduct 10 points
+
+
+
+
+        score -= (tabDeduction + focusDeduction + faceDeduction + mismatchDeduction + gazeDeduction + audioDeduction + multipleFaceDeduction + blockedDeduction + breachDeduction);
+
+
+
 
         // Round to 2 decimal places to avoid floating-point precision errors
         session.integrityScore = Math.max(Math.round(score * 100) / 100, 0);
