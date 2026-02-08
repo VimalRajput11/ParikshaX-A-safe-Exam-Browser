@@ -253,6 +253,18 @@ exports.endSession = async (req, res) => {
         const exam = session.examId;
         const finalAnswers = answers || {};
 
+        // VITAL FIX: Save the final answers into the session document 
+        // ensuring 'emailResults' has access to the complete answer set later.
+        if (answers) {
+            const answerArray = Object.entries(answers).map(([key, value]) => ({
+                questionId: key,
+                answer: value,
+                timestamp: new Date()
+            }));
+            session.answers = answerArray;
+        }
+
+
         if (exam.sections && exam.sections.length > 0) {
             exam.sections.forEach(section => {
                 let sectionScore = 0;
@@ -447,6 +459,7 @@ exports.deleteAllSessions = async (req, res) => {
     }
 };
 // Email exam results
+// Email exam results
 exports.emailResults = async (req, res) => {
     try {
         const { sessionIds } = req.body; // Array of session IDs
@@ -457,18 +470,63 @@ exports.emailResults = async (req, res) => {
 
         const sessions = await ExamSession.find({ _id: { $in: sessionIds } })
             .populate('studentId', 'name email')
-            .populate('examId', 'title');
+            .populate({
+                path: 'examId',
+                populate: { path: 'sections.questions' } // Ensure deep population if needed, though schema is embedded
+            });
 
         let sentCount = 0;
         for (const session of sessions) {
-            if (session.studentId?.email) {
+            if (session.studentId?.email && session.examId) {
+                const exam = session.examId;
+                const studentAnswersMap = new Map();
+
+                if (session.answers && Array.isArray(session.answers)) {
+                    // Create a normalized map of answers
+                    session.answers.forEach(a => {
+                        if (a.questionId) {
+                            studentAnswersMap.set(String(a.questionId), a.answer);
+                        }
+                    });
+                }
+
+
+                const questionsAnalysis = [];
+
+                // Helper to process a question
+                const processQuestion = (q) => {
+                    const qId = q._id.toString();
+                    const studentAns = studentAnswersMap.get(qId);
+                    const correctAns = q.options[q.correctOption];
+
+                    questionsAnalysis.push({
+                        questionText: q.questionText,
+                        studentAnswer: studentAns || 'Not Answered',
+                        correctAnswer: correctAns,
+                        isCorrect: studentAns === correctAns
+                    });
+                };
+
+                // Handle Sections or Direct Questions
+                if (exam.sections && exam.sections.length > 0) {
+                    exam.sections.forEach(section => {
+                        if (section.questions) {
+                            section.questions.forEach(q => processQuestion(q));
+                        }
+                    });
+                } else if (exam.questions && exam.questions.length > 0) { // Fallback if schema differs
+                    exam.questions.forEach(q => processQuestion(q));
+                }
+
+
                 await emailService.sendExamResult(
                     session.studentId.email,
                     session.studentId.name,
                     session.examId.title,
                     session.score,
                     session.maxScore,
-                    session.integrityScore
+                    session.integrityScore,
+                    questionsAnalysis
                 );
                 sentCount++;
             }
@@ -479,3 +537,4 @@ exports.emailResults = async (req, res) => {
         res.status(500).json({ error: error.message });
     }
 };
+

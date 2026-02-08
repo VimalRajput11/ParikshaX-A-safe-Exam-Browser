@@ -39,8 +39,9 @@ class FaceDetectionService {
             return [];
         }
 
-        // Use SSD MobileNet V1 options with lower confidence for better recall of multiple faces
-        const options = new faceapi.SsdMobilenetv1Options({ minConfidence: 0.15 });
+        // Increased confidence to 0.50 to reduce false 'Multiple Faces' alerts (ghosting)
+        const options = new faceapi.SsdMobilenetv1Options({ minConfidence: 0.50 });
+
 
 
         try {
