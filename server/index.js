@@ -1,14 +1,14 @@
+const dotenv = require('dotenv');
+dotenv.config();
+
 const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
-const dotenv = require('dotenv');
 const examRoutes = require('./routes/exam');
 const sessionRoutes = require('./routes/session');
 const studentRoutes = require('./routes/student');
 const adminRoutes = require('./routes/admin');
 
-
-dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 5000;

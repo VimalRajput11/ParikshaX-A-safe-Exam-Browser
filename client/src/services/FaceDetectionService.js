@@ -1,5 +1,7 @@
 import * as faceapi from 'face-api.js';
 
+
+
 // Use a reliable CDN or public URL for models
 const MODEL_URL = 'https://justadudewhohacks.github.io/face-api.js/models';
 
