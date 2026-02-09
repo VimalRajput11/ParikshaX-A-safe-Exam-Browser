@@ -366,6 +366,54 @@ const StudentManagement = ({ students, setStudents, exams, onDelete, notify, con
         );
     };
 
+    const downloadStudentList = () => {
+        try {
+            if (examStudents.length === 0) {
+                notify('No students registered to download', 'error');
+                return;
+            }
+            const dataToExport = examStudents.map(student => ({
+                Name: student.name,
+                Email: student.email
+            }));
+
+            const ws = XLSX.utils.json_to_sheet(dataToExport);
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, "Registered Students");
+            XLSX.writeFile(wb, `${selectedExam.title.replace(/[^a-z0-9]/gi, '_')}_Students.xlsx`);
+            notify('Student list downloaded successfully');
+        } catch (err) {
+            console.error(err);
+            notify('Failed to download list', 'error');
+        }
+    };
+
+    const handleDeleteAllForExam = async () => {
+        confirmAction(
+            'Delete All Students',
+            `Are you sure you want to remove ALL ${examStudents.length} students from this exam? This action cannot be undone.`,
+            async () => {
+                try {
+                    const res = await fetch(`${API_BASE_URL}/students/delete-many`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ examId: selectedExam._id })
+                    });
+                    const data = await res.json();
+                    if (data.success) {
+                        notify(data.message);
+                        await fetchStudents();
+                    } else {
+                        notify(data.error || 'Failed to delete students', 'error');
+                    }
+                } catch (err) {
+                    console.error(err);
+                    notify('Failed to delete students', 'error');
+                }
+            }
+        );
+    };
+
     if (activeSubTab === 'all-students') {
         const filteredAllStudents = students.filter(s =>
             s.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -566,12 +614,27 @@ const StudentManagement = ({ students, setStudents, exams, onDelete, notify, con
                     <div className="p-4 md:p-6 border-b border-gray-700 flex flex-col sm:flex-row justify-between items-center bg-gray-900/30 gap-4">
                         <h3 className="font-bold">Registered Students ({examStudents.length})</h3>
                         {examStudents.length > 0 && (
-                            <button
-                                onClick={handleBulkResendCredentials}
-                                className="w-full sm:w-auto text-xs bg-cyan-600 hover:bg-cyan-700 px-4 py-2 rounded-lg font-bold flex items-center justify-center gap-2 transition-all shadow-lg shadow-cyan-900/20 active:scale-[0.95]"
-                            >
-                                <Upload className="w-3.5 h-3.5 rotate-180" /> Email All
-                            </button>
+                            <div className="flex gap-2 w-full sm:w-auto">
+                                <button
+                                    onClick={downloadStudentList}
+                                    className="flex-1 sm:flex-none text-xs bg-gray-700 hover:bg-gray-600 border border-gray-600 hover:border-gray-500 px-4 py-2 rounded-lg font-bold flex items-center justify-center gap-2 transition-all active:scale-[0.95]"
+                                    title="Download Excel List (Name, Email)"
+                                >
+                                    <Download className="w-3.5 h-3.5" /> Download List
+                                </button>
+                                <button
+                                    onClick={handleBulkResendCredentials}
+                                    className="flex-1 sm:flex-none text-xs bg-cyan-600 hover:bg-cyan-700 px-4 py-2 rounded-lg font-bold flex items-center justify-center gap-2 transition-all shadow-lg shadow-cyan-900/20 active:scale-[0.95]"
+                                >
+                                    <Upload className="w-3.5 h-3.5 rotate-180" /> Email All
+                                </button>
+                                <button
+                                    onClick={handleDeleteAllForExam}
+                                    className="flex-1 sm:flex-none text-xs bg-red-600 hover:bg-red-700 px-4 py-2 rounded-lg font-bold flex items-center justify-center gap-2 transition-all shadow-lg shadow-red-900/20 active:scale-[0.95]"
+                                >
+                                    <Trash2 className="w-3.5 h-3.5" /> Delete All
+                                </button>
+                            </div>
                         )}
                     </div>
                     <div className="overflow-x-auto scrollbar-thin scrollbar-thumb-gray-700">
@@ -616,7 +679,7 @@ const StudentManagement = ({ students, setStudents, exams, onDelete, notify, con
                     </div>
                 </div>
             </div>
-        </div>
+        </div >
     );
 };
 

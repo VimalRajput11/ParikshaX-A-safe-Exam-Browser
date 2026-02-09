@@ -136,47 +136,58 @@ exports.sendExamResult = async (email, name, examTitle, score, maxScore, integri
         const integrityColor = integrityScore > 80 ? '#10b981' : integrityScore > 50 ? '#f59e0b' : '#ef4444';
 
         // Generate Question Analysis HTML
+        // Generate Question Analysis HTML
         let analysisHtml = '';
         if (questionsAnalysis && questionsAnalysis.length > 0) {
-            analysisHtml = `
-                <table border="0" cellpadding="0" cellspacing="0" width="100%" style="margin-top: 40px; border-collapse: collapse;">
-                    <tr>
-                        <td colspan="2" style="padding-bottom: 20px; border-bottom: 2px solid #e2e8f0;">
-                            <div style="color: #0f172a; font-size: 18px; font-weight: 800; letter-spacing: 1px; text-transform: uppercase;">Detailed Question Analysis</div>
-                        </td>
-                    </tr>
-            `;
 
-            questionsAnalysis.forEach((q, index) => {
-                const isCorrect = q.isCorrect;
-                const statusIcon = isCorrect ? '✔️' : '❌';
-                const statusColor = isCorrect ? '#10b981' : '#ef4444';
-                const bgColor = index % 2 === 0 ? '#ffffff' : '#f8fafc';
+            // Iterate over sections
+            questionsAnalysis.forEach(section => {
 
+                // Section Header
                 analysisHtml += `
-                    <tr style="background-color: ${bgColor};">
-                        <td style="padding: 20px; border-bottom: 1px solid #e2e8f0; vertical-align: top;">
-                            <div style="margin-bottom: 8px; color: #64748b; font-size: 11px; font-weight: 700; text-transform: uppercase;">Question ${index + 1}</div>
-                            <div style="color: #0f172a; font-size: 15px; font-weight: 600; line-height: 1.5; margin-bottom: 12px;">${q.questionText}</div>
-                            
-                            <table border="0" cellpadding="0" cellspacing="0" width="100%">
-                                <tr>
-                                    <td style="padding-bottom: 8px; width: 140px; color: #64748b; font-size: 12px; font-weight: 500;">Your Answer:</td>
-                                    <td style="padding-bottom: 8px; color: ${statusColor}; font-weight: 700; font-size: 13px;">${q.studentAnswer || 'Not Attempted'} ${statusIcon}</td>
-                                </tr>
-                                ${!isCorrect ? `
-                                <tr>
-                                    <td style="color: #64748b; font-size: 12px; font-weight: 500;">Correct Answer:</td>
-                                    <td style="color: #0f172a; font-weight: 700; font-size: 13px;">${q.correctAnswer}</td>
-                                </tr>
-                                ` : ''}
-                            </table>
-                        </td>
-                    </tr>
+                    <div style="margin-top: 40px; margin-bottom: 20px; border-bottom: 2px solid #e2e8f0; padding-bottom: 10px;">
+                        <span style="color: #0f172a; font-size: 18px; font-weight: 800; letter-spacing: 1px; text-transform: uppercase;">${section.title}</span>
+                        <span style="color: #64748b; font-size: 12px; font-weight: 600; margin-left: 10px;">(${section.questions.length} Questions)</span>
+                    </div>
+                    <table border="0" cellpadding="0" cellspacing="0" width="100%" style="border-collapse: collapse;">
                 `;
-            });
 
-            analysisHtml += '</table>';
+                // Questions in this section
+                if (section.questions && section.questions.length > 0) {
+                    section.questions.forEach((q, index) => {
+                        const isCorrect = q.isCorrect;
+                        const statusIcon = isCorrect ? '✔️' : '❌';
+                        const statusColor = isCorrect ? '#10b981' : '#ef4444';
+                        const bgColor = index % 2 === 0 ? '#ffffff' : '#f8fafc';
+
+                        analysisHtml += `
+                            <tr style="background-color: ${bgColor};">
+                                <td style="padding: 20px; border-bottom: 1px solid #e2e8f0; vertical-align: top;">
+                                    <div style="margin-bottom: 8px; color: #64748b; font-size: 11px; font-weight: 700; text-transform: uppercase;">Question ${index + 1}</div>
+                                    <div style="color: #0f172a; font-size: 15px; font-weight: 600; line-height: 1.5; margin-bottom: 12px;">${q.questionText}</div>
+                                    
+                                    <table border="0" cellpadding="0" cellspacing="0" width="100%">
+                                        <tr>
+                                            <td style="padding-bottom: 8px; width: 140px; color: #64748b; font-size: 12px; font-weight: 500;">Your Answer:</td>
+                                            <td style="padding-bottom: 8px; color: ${statusColor}; font-weight: 700; font-size: 13px;">${q.studentAnswer || 'Not Attempted'} ${statusIcon}</td>
+                                        </tr>
+                                        ${!isCorrect ? `
+                                        <tr>
+                                            <td style="color: #64748b; font-size: 12px; font-weight: 500;">Correct Answer:</td>
+                                            <td style="color: #0f172a; font-weight: 700; font-size: 13px;">${q.correctAnswer}</td>
+                                        </tr>
+                                        ` : ''}
+                                    </table>
+                                </td>
+                            </tr>
+                        `;
+                    });
+                } else {
+                    analysisHtml += `<tr><td style="padding: 20px; text-align: center; color: #64748b;">No questions in this section.</td></tr>`;
+                }
+
+                analysisHtml += '</table>';
+            });
         }
 
         const mailOptions = {

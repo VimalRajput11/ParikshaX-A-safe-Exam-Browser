@@ -491,31 +491,39 @@ exports.emailResults = async (req, res) => {
                 }
 
 
-                const questionsAnalysis = [];
+                const sectionsAnalysis = [];
 
                 // Helper to process a question
-                const processQuestion = (q) => {
+                const getQuestionAnalysis = (q) => {
                     const qId = q._id.toString();
                     const studentAns = studentAnswersMap.get(qId);
                     const correctAns = q.options[q.correctOption];
 
-                    questionsAnalysis.push({
+                    return {
                         questionText: q.questionText,
                         studentAnswer: studentAns || 'Not Answered',
                         correctAnswer: correctAns,
                         isCorrect: studentAns === correctAns
-                    });
+                    };
                 };
 
                 // Handle Sections or Direct Questions
                 if (exam.sections && exam.sections.length > 0) {
                     exam.sections.forEach(section => {
-                        if (section.questions) {
-                            section.questions.forEach(q => processQuestion(q));
+                        if (section.questions && section.questions.length > 0) {
+                            const sectionQuestions = section.questions.map(q => getQuestionAnalysis(q));
+                            sectionsAnalysis.push({
+                                title: section.title,
+                                questions: sectionQuestions
+                            });
                         }
                     });
                 } else if (exam.questions && exam.questions.length > 0) { // Fallback if schema differs
-                    exam.questions.forEach(q => processQuestion(q));
+                    const allQuestions = exam.questions.map(q => getQuestionAnalysis(q));
+                    sectionsAnalysis.push({
+                        title: 'General Questions',
+                        questions: allQuestions
+                    });
                 }
 
 
@@ -526,7 +534,7 @@ exports.emailResults = async (req, res) => {
                     session.score,
                     session.maxScore,
                     session.integrityScore,
-                    questionsAnalysis
+                    sectionsAnalysis
                 );
                 sentCount++;
             }

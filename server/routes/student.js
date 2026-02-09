@@ -20,6 +20,9 @@ router.get('/exam/:examId', studentController.getStudentsByExam);
 // Delete student
 router.delete('/:id', studentController.deleteStudent);
 
+// Delete all students for specific exam
+router.post('/delete-many', studentController.deleteStudentsByExam);
+
 // Resend Credentials
 router.post('/send-credentials', studentController.sendCredentials);
 

@@ -128,14 +128,11 @@ exports.assignStudentsToExam = async (req, res) => {
             const email = s.email?.toLowerCase().trim();
             let user = await User.findOne({ email });
 
-            const prefix = exam.title
-                .split(' ')
-                .map(word => word[0])
-                .join('')
-                .toUpperCase()
-                .substring(0, 4);
-
-            const studentId = s.studentId || `${new Date().getFullYear()}${prefix}${Math.floor(1000 + Math.random() * 9000)}`;
+            // Format: YYYY + 4 Random Letters + 4 Random Digits (e.g., 2026JPEM3609)
+            const year = new Date().getFullYear();
+            const randomLetters = Array(4).fill(0).map(() => "ABCDEFGHIJKLMNOPQRSTUVWXYZ"[Math.floor(Math.random() * 26)]).join('');
+            const randomNumbers = Math.floor(1000 + Math.random() * 9000);
+            const studentId = s.studentId || `${year}${randomLetters}${randomNumbers}`;
 
             if (!user) {
                 user = new User({
@@ -200,6 +197,30 @@ exports.deleteStudent = async (req, res) => {
             return res.status(404).json({ error: 'Student not found' });
         }
         res.json({ success: true, message: 'Student deleted successfully' });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+};
+
+// Delete all students for a specific exam
+exports.deleteStudentsByExam = async (req, res) => {
+    try {
+        const { examId } = req.body;
+        if (!examId) return res.status(400).json({ error: 'Exam ID required' });
+
+        // 1. Pull examId from all students
+        await User.updateMany(
+            { role: 'student', eligibleExams: examId },
+            { $pull: { eligibleExams: examId } }
+        );
+
+        // 2. Delete students who have NO eligible exams left
+        const result = await User.deleteMany({
+            role: 'student',
+            eligibleExams: { $size: 0 }
+        });
+
+        res.json({ success: true, message: `Removed students from exam. cleaned up ${result.deletedCount} orphaned records.` });
     } catch (error) {
         res.status(500).json({ error: error.message });
     }
