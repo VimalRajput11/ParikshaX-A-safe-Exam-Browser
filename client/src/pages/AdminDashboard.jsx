@@ -2060,6 +2060,26 @@ function AdminDashboard() {
         setExams(exams.map(e => e._id === updatedExam._id ? updatedExam : e));
     };
 
+    const getCompletedExamsCount = () => {
+        return exams.filter(exam => {
+            const registered = students.filter(s =>
+                s.eligibleExams?.some(e => (e._id || e).toString() === exam._id.toString())
+            );
+
+            if (registered.length === 0) return false;
+
+            return registered.every(student =>
+                sessions.some(s =>
+                    s.examId &&
+                    (s.examId._id || s.examId).toString() === exam._id.toString() &&
+                    s.studentId &&
+                    (s.studentId._id || s.studentId).toString() === student._id.toString() &&
+                    ['completed', 'submitted'].includes(s.status)
+                )
+            );
+        }).length;
+    };
+
     const handleLogout = () => {
         confirmAction(
             'Confirm Logout',
@@ -2138,7 +2158,9 @@ function AdminDashboard() {
                                         <div className="p-2 bg-yellow-500/20 rounded-lg text-yellow-400"><Award className="w-6 h-6" /></div>
                                         <span className="text-xs text-gray-400 bg-gray-900 px-2 py-1 rounded">Finished</span>
                                     </div>
-                                    <div className="text-2xl md:text-3xl font-bold mb-1">{sessions.filter(s => s.status === 'completed').length}</div>
+                                    <div className="text-2xl md:text-3xl font-bold mb-1">
+                                        {getCompletedExamsCount()}
+                                    </div>
                                     <div className="text-sm text-gray-500">Completed Exams</div>
                                 </div>
                             </div>
