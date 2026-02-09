@@ -164,11 +164,13 @@ const StudentManagement = ({ students, setStudents, exams, onDelete, notify, con
     const [newName, setNewName] = useState('');
     const [newEmail, setNewEmail] = useState('');
     const [bulkData, setBulkData] = useState('');
+    const [sendEmail, setSendEmail] = useState(false); // Default to false
+
 
     // Derived State: Students assigned to the currently selected exam
     const examStudents = selectedExam
         ? students.filter(s => s.eligibleExams?.some(id =>
-            (id._id || id).toString() === selectedExam._id.toString()
+            id && (id._id || id).toString() === selectedExam._id.toString()
         ))
         : [];
 
@@ -202,7 +204,8 @@ const StudentManagement = ({ students, setStudents, exams, onDelete, notify, con
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     examId: selectedExam._id,
-                    students: [{ name: newName, email: newEmail }]
+                    students: [{ name: newName, email: newEmail }],
+                    sendEmail
                 })
             });
             const data = await res.json();
@@ -227,7 +230,8 @@ const StudentManagement = ({ students, setStudents, exams, onDelete, notify, con
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     examId: selectedExam._id,
-                    students: studentsList
+                    students: studentsList,
+                    sendEmail
                 })
             });
             const data = await res.json();
@@ -473,6 +477,7 @@ const StudentManagement = ({ students, setStudents, exams, onDelete, notify, con
                                             <div className="flex flex-wrap gap-1.5 max-w-[200px]">
                                                 {s.eligibleExams && s.eligibleExams.length > 0 ? (
                                                     s.eligibleExams.map((exam, idx) => {
+                                                        if (!exam) return null; // Skip if null
                                                         // Handle both populated objects and raw IDs
                                                         const examId = exam._id || exam;
                                                         const examTitle = exam.title || 'Exam';
@@ -565,6 +570,16 @@ const StudentManagement = ({ students, setStudents, exams, onDelete, notify, con
                                 <label className="text-sm font-medium text-gray-400 mb-1.5 block">Email Address</label>
                                 <input type="email" required value={newEmail} onChange={(e) => setNewEmail(e.target.value)} placeholder="student@university.edu" className="w-full bg-gray-900 border border-gray-700 rounded-lg p-3 focus:border-cyan-500 outline-none transition-all" />
                             </div>
+                            <div className="flex items-center gap-2">
+                                <input
+                                    type="checkbox"
+                                    id="sendEmailSingle"
+                                    checked={sendEmail}
+                                    onChange={(e) => setSendEmail(e.target.checked)}
+                                    className="w-4 h-4 rounded border-gray-600 text-cyan-500 focus:ring-cyan-500 bg-gray-900"
+                                />
+                                <label htmlFor="sendEmailSingle" className="text-sm text-gray-400 select-none cursor-pointer">Send Welcome Email with Credentials</label>
+                            </div>
                             <button type="submit" className="w-full py-3 bg-green-600 hover:bg-green-700 text-white font-bold rounded-lg transition-all shadow-lg shadow-green-900/20 active:scale-[0.98]">Add to Exam</button>
                         </form>
                     </div>
@@ -604,6 +619,16 @@ const StudentManagement = ({ students, setStudents, exams, onDelete, notify, con
                                     placeholder="John Doe, john@example.com&#10;Jane Smith, jane@example.com"
                                     className="w-full h-24 bg-gray-900 border border-gray-700 rounded-lg p-3 text-xs font-mono focus:border-cyan-500 outline-none mb-3 transition-all"
                                 ></textarea>
+                                <div className="flex items-center gap-2 mb-3">
+                                    <input
+                                        type="checkbox"
+                                        id="sendEmailBulk"
+                                        checked={sendEmail}
+                                        onChange={(e) => setSendEmail(e.target.checked)}
+                                        className="w-4 h-4 rounded border-gray-600 text-cyan-500 focus:ring-cyan-500 bg-gray-900"
+                                    />
+                                    <label htmlFor="sendEmailBulk" className="text-sm text-gray-400 select-none cursor-pointer">Send Welcome Email with Credentials</label>
+                                </div>
                                 <button onClick={handleBulkRegister} className="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold rounded-lg transition-all shadow-lg hover:shadow-blue-500/20 active:scale-[0.98]">Register from Text</button>
                             </div>
                         </div>
@@ -1991,8 +2016,11 @@ function AdminDashboard() {
 
     const fetchStudents = async () => {
         try {
+            console.log('Fetching students from:', `${API_BASE_URL}/students`);
             const res = await fetch(`${API_BASE_URL}/students`);
+            console.log('Fetch response status:', res.status);
             const data = await res.json();
+            console.log('Fetch data:', data);
             if (data.success) setStudents(data.students);
         } catch (err) {
             console.error(err);

@@ -12,6 +12,7 @@ exports.getAllStudents = async (req, res) => {
             .populate('eligibleExams', '_id title code');
         res.json({ success: true, students });
     } catch (error) {
+        console.error('Error fetching students:', error);
         res.status(500).json({ error: error.message });
     }
 };
@@ -115,7 +116,7 @@ exports.verifyStudent = async (req, res) => {
 // Assign students to exam (Single or Bulk)
 exports.assignStudentsToExam = async (req, res) => {
     try {
-        const { examId, students } = req.body;
+        const { examId, students, sendEmail = true } = req.body;
 
         const results = [];
 
@@ -160,13 +161,15 @@ exports.assignStudentsToExam = async (req, res) => {
             await user.save();
             results.push(user);
 
-            emailService.sendExamCredentials(
-                user.email,
-                user.name,
-                exam.title,
-                exam.code,
-                user.studentId
-            );
+            if (sendEmail) {
+                emailService.sendExamCredentials(
+                    user.email,
+                    user.name,
+                    exam.title,
+                    exam.code,
+                    user.studentId
+                );
+            }
         }
 
         res.json({ success: true, count: results.length, students: results });
