@@ -60,10 +60,30 @@ exports.sendExamCredentials = async (email, name, examTitle, examCode, studentId
                                         <tr>
                                             <td style="padding: 30px;">
                                                 <div style="color: #94a3b8; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 2px; margin-bottom: 8px;">Unique Candidate ID</div>
-                                                <div style="color: #22d3ee; font-family: 'Courier New', Courier, monospace; font-size: 28px; font-weight: 800;">${studentId}</div>
+                                                <table border="0" cellpadding="0" cellspacing="0">
+                                                    <tr>
+                                                        <td style="color: #22d3ee; font-family: 'Courier New', Courier, monospace; font-size: 28px; font-weight: 800;">
+                                                            <span style="border-bottom: 1px dashed rgba(34, 211, 238, 0.3); padding-bottom: 2px; user-select: all; -webkit-user-select: all;">${studentId}</span>
+                                                        </td>
+                                                        <td style="padding-left: 12px; vertical-align: middle;">
+                                                            <span style="color: rgba(255,255,255,0.4); font-size: 10px; font-family: sans-serif; border: 1px solid rgba(255,255,255,0.2); padding: 4px 8px; border-radius: 4px; letter-spacing: 1px;">COPY</span>
+                                                        </td>
+                                                    </tr>
+                                                </table>
+                                                
                                                 <div style="height: 1px; background-color: rgba(255,255,255,0.1); margin: 20px 0;"></div>
+                                                
                                                 <div style="color: #94a3b8; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 2px; margin-bottom: 8px;">Secure Access Code</div>
-                                                <div style="color: #ffffff; font-family: 'Courier New', Courier, monospace; font-size: 28px; font-weight: 800;">${examCode}</div>
+                                                <table border="0" cellpadding="0" cellspacing="0">
+                                                    <tr>
+                                                        <td style="color: #ffffff; font-family: 'Courier New', Courier, monospace; font-size: 28px; font-weight: 800;">
+                                                            <span style="border-bottom: 1px dashed rgba(255, 255, 255, 0.3); padding-bottom: 2px; user-select: all; -webkit-user-select: all;">${examCode}</span>
+                                                        </td>
+                                                        <td style="padding-left: 12px; vertical-align: middle;">
+                                                            <span style="color: rgba(255,255,255,0.4); font-size: 10px; font-family: sans-serif; border: 1px solid rgba(255,255,255,0.2); padding: 4px 8px; border-radius: 4px; letter-spacing: 1px;">COPY</span>
+                                                        </td>
+                                                    </tr>
+                                                </table>
                                             </td>
                                         </tr>
                                     </table>
