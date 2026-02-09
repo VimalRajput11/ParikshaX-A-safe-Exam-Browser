@@ -144,8 +144,8 @@ exports.logEvent = async (req, res) => {
 
         // Calculate Integrity Score with revised weighting
         let score = 100;
-        const faceDeduction = (session.metrics.faceAbsentCount || 0) * 1;
-        const mismatchDeduction = (session.metrics.faceMismatchCount || 0) * 1;
+        const faceDeduction = (session.metrics.faceAbsentCount || 0) * 0;
+        const mismatchDeduction = (session.metrics.faceMismatchCount || 0) * 0;
         const multipleFaceDeduction = (session.metrics.multipleFacesCount || 0) * 1;
         const blockedDeduction = (session.metrics.cameraBlockedCount || 0) * 1;
 
