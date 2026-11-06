@@ -154,7 +154,7 @@ const Sidebar = ({ activeTab, setActiveTab, handleLogout, isOpen, setIsOpen }) =
     </>
 );
 
-const StudentManagement = ({ students, setStudents, exams, onDelete, notify, confirmAction, fetchStudents }) => {
+const StudentManagement = ({ students, exams, onDelete, notify, confirmAction, fetchStudents }) => {
     const [view, setView] = useState('list-exams'); // list-exams, manage-students
     const [selectedExam, setSelectedExam] = useState(null);
     const [searchQuery, setSearchQuery] = useState('');
@@ -177,19 +177,6 @@ const StudentManagement = ({ students, setStudents, exams, onDelete, notify, con
     const handleExamClick = (exam) => {
         setSelectedExam(exam);
         setView('manage-students');
-    };
-
-    const generateId = () => {
-        if (!selectedExam) return '';
-        const year = new Date().getFullYear();
-        const prefix = selectedExam.title
-            .split(' ')
-            .map(word => word[0])
-            .join('')
-            .toUpperCase()
-            .substring(0, 4);
-        const random = Math.floor(1000 + Math.random() * 9000);
-        return `${year}${prefix}${random}`;
     };
 
     const handleSingleRegister = async (e) => {
@@ -326,6 +313,7 @@ const StudentManagement = ({ students, setStudents, exams, onDelete, notify, con
             XLSX.writeFile(wb, "Student_Registration_Template.xlsx");
             notify('Template download started');
         } catch (err) {
+            console.error('Template download failed:', err);
             notify('Download failed', 'error');
         }
     };
@@ -1392,7 +1380,7 @@ const QuestionManagement = ({ exam, onBack, onUpdate, notify }) => {
     );
 };
 
-const Monitoring = ({ sessions, setSelectedSessionLog, setActiveTab, onDelete, onDeleteAll, confirmAction, fetchSessionById }) => (
+const Monitoring = ({ sessions, onDelete, onDeleteAll, fetchSessionById }) => (
     <div className="flex-1 p-4 md:p-8 overflow-y-auto">
         <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4 mb-8">
             <h2 className="text-xl md:text-2xl font-bold">Live Monitoring</h2>
@@ -2333,8 +2321,8 @@ function AdminDashboard() {
                         </div>
                     )}
                     {activeTab === 'create-exam' && <CreateExam fetchExams={fetchExams} setActiveTab={setActiveTab} notify={notify} />}
-                    {activeTab === 'students' && <StudentManagement students={students} setStudents={setStudents} exams={exams} onDelete={handleDeleteStudent} notify={notify} confirmAction={confirmAction} fetchStudents={fetchStudents} />}
-                    {activeTab === 'monitoring' && <Monitoring sessions={sessions} setSelectedSessionLog={setSelectedSessionLog} setActiveTab={setActiveTab} onDelete={handleDeleteSession} onDeleteAll={handleDeleteAllSessions} confirmAction={confirmAction} fetchSessionById={fetchSessionById} />}
+                    {activeTab === 'students' && <StudentManagement students={students} exams={exams} onDelete={handleDeleteStudent} notify={notify} confirmAction={confirmAction} fetchStudents={fetchStudents} />}
+                    {activeTab === 'monitoring' && <Monitoring sessions={sessions} onDelete={handleDeleteSession} onDeleteAll={handleDeleteAllSessions} fetchSessionById={fetchSessionById} />}
                     {activeTab === 'view-log' && <ViewLog selectedSessionLog={selectedSessionLog} setActiveTab={setActiveTab} />}
                     {activeTab === 'view-questions' && <QuestionManagement exam={selectedExamForQuestions} onBack={() => { setActiveTab('dashboard'); setSelectedExamForQuestions(null); }} onUpdate={handleUpdateExam} notify={notify} />}
                     {activeTab === 'results' && <Results sessions={sessions} students={students} exams={exams} onDelete={handleDeleteSession} onDeleteAll={handleDeleteAllSessions} notify={notify} confirmAction={confirmAction} fetchSessionById={fetchSessionById} />}

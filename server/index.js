@@ -16,13 +16,23 @@ const PORT = process.env.PORT || 5000;
 app.set('trust proxy', 1);
 
 
+const allowedOrigins = new Set([
+    'http://localhost:3000',
+    'http://localhost:5173',
+    'https://parikshax.vercel.app',
+    'https://pariksha-x-a-safe-exam-browser.vercel.app',
+    // Extra origins (comma-separated), e.g. a custom domain or preview URL
+    ...(process.env.CORS_ORIGIN || '').split(',').map(o => o.trim()).filter(Boolean)
+]);
+
 app.use(cors({
-    origin: [
-        'http://localhost:3000',
-        'http://localhost:5173',
-        'https://parikshax.vercel.app',
-        'https://pariksha-x-a-safe-exam-browser.vercel.app'
-    ],
+    origin: (origin, callback) => {
+        // Allow non-browser clients (curl, server-to-server) and the Electron app (file://)
+        if (!origin || origin === 'null' || origin.startsWith('file://') || allowedOrigins.has(origin)) {
+            return callback(null, true);
+        }
+        return callback(null, false);
+    },
     credentials: true
 }));
 
@@ -58,7 +68,7 @@ const connectDB = async () => {
 
 
 app.use(async (req, res, next) => {
-    if (req.path === '/api/health') return next();
+    if (req.path === '/' || req.path === '/api/health') return next();
     try {
         await connectDB();
         next();
@@ -76,6 +86,11 @@ app.use('/api/sessions', sessionRoutes);
 app.use('/api/students', studentRoutes);
 app.use('/api/admin', adminRoutes);
 
+app.use('/api', (req, res) => {
+    res.status(404).json({ success: false, message: `Route not found: ${req.method} ${req.originalUrl}` });
+});
+
+// eslint-disable-next-line no-unused-vars
 app.use((err, req, res, next) => {
     console.error('🔥 Unhandled Error:', err);
     res.status(500).json({
@@ -84,7 +99,8 @@ app.use((err, req, res, next) => {
     });
 });
 
-if (process.env.NODE_ENV !== 'production') {
+// On Vercel the app is exported as a serverless handler; everywhere else, listen normally
+if (!process.env.VERCEL) {
     app.listen(PORT, () => {
         console.log(`Server running on port ${PORT}`);
     });

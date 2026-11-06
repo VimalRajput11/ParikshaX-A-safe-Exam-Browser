@@ -111,7 +111,6 @@ class FaceDetectionService {
         // Compare nose tip vertical position relative to eye line and chin
         // This is a simplified heuristic
         const noseTop = nose[0];
-        const noseHeight = Math.abs(noseTip.y - noseTop.y);
 
         // If the nose looks "short" vertically, they might be looking up. 
         // If it looks "long" or close to mouth, looking down.

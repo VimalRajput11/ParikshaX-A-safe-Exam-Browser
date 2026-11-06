@@ -26,8 +26,6 @@ function ExamPage() {
     const [focusLostTime, setFocusLostTime] = useState(0);
     const [isExamActive, setIsExamActive] = useState(false);
     const [sessionId, setSessionId] = useState(localStorage.getItem('sessionId'));
-    const [showReport, setShowReport] = useState(false);
-    const [finalReport, setFinalReport] = useState(null);
     const [integrityScore, setIntegrityScore] = useState(100);
     const [lockdownMode, setLockdownMode] = useState(false);
     const [lockdownBreachCount, setLockdownBreachCount] = useState(0);
@@ -463,7 +461,7 @@ function ExamPage() {
                 ctx.drawImage(videoRef.current, 0, 0, canvas.width, canvas.height);
                 const snapshot = canvas.toDataURL('image/jpeg', 0.4); // High compression for speed
 
-                const response = await fetch(`${API_BASE_URL}/sessions/${sessionId}/snapshot`, {
+                await fetch(`${API_BASE_URL}/sessions/${sessionId}/snapshot`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ snapshot })
@@ -636,7 +634,7 @@ function ExamPage() {
             setIsFullscreen(true);
             setIsExamActive(true);
             if (navigator.keyboard && navigator.keyboard.lock) {
-                try { navigator.keyboard.lock(['Escape']); } catch (e) { }
+                try { navigator.keyboard.lock(['Escape']); } catch { /* keyboard lock unsupported */ }
             }
         };
 
@@ -651,7 +649,7 @@ function ExamPage() {
         if (elem.requestFullscreen) {
             elem.requestFullscreen({ navigationUI: "hide" })
                 .then(proceedToExam)
-                .catch((err) => {
+                .catch(() => {
                     console.warn("Fullscreen with navigationUI hidden failed, retrying standard...");
                     elem.requestFullscreen()
                         .then(proceedToExam)
@@ -683,7 +681,7 @@ function ExamPage() {
 
 
         if (document.exitFullscreen) {
-            try { await document.exitFullscreen(); } catch (e) { }
+            try { await document.exitFullscreen(); } catch { /* not in fullscreen */ }
         }
         setIsFullscreen(false);
 
@@ -730,15 +728,6 @@ function ExamPage() {
         if (currentQuestionIndex > 0) {
             setCurrentQuestionIndex(prev => prev - 1);
         }
-    };
-
-    const handleOptionSelect = (option) => {
-        const updatedAnswers = {
-            ...userAnswers,
-            [questions[currentQuestionIndex]._id || questions[currentQuestionIndex].id]: option
-        };
-        setUserAnswers(updatedAnswers);
-        localStorage.setItem('userAnswers', JSON.stringify(updatedAnswers));
     };
 
     if (isSubmitted) {
