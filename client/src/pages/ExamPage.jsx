@@ -2,8 +2,10 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
     Maximize, Monitor, Eye, Activity, ChevronLeft, ChevronRight, CheckCircle,
-    Clock, ClipboardList, Play, AlertCircle, Shield
+    Clock, ClipboardList, Play, AlertCircle, Info, ListChecks, Camera, WifiOff,
+    ShieldAlert, Mic, RotateCcw, Send
 } from 'lucide-react';
+import BrandMark from '../components/BrandMark';
 import ConsentModal from '../components/ConsentModal';
 import IntegrityReport from '../components/IntegrityReport';
 import ConfirmationModal from '../components/ConfirmationModal';
@@ -730,177 +732,236 @@ function ExamPage() {
         }
     };
 
+    const candidateName = localStorage.getItem('studentName') || 'Candidate';
+    const timerTone = timeLeft < 60 ? 'danger' : timeLeft < 300 ? 'warning' : 'normal';
+    const integrityTone = integrityScore >= 80 ? 'success' : integrityScore >= 60 ? 'warning' : 'danger';
+    const toneText = { success: 'text-emerald-600', warning: 'text-amber-600', danger: 'text-red-600' };
+    const toneBar = { success: 'bg-emerald-500', warning: 'bg-amber-500', danger: 'bg-red-500' };
+
     if (isSubmitted) {
         return (
-            <div className="min-h-screen bg-[#0f1115] text-white flex flex-col items-center justify-center p-4">
-                <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20 pointer-events-none"></div>
-                <div className="bg-gray-800/50 backdrop-blur-xl p-12 rounded-[40px] shadow-2xl max-w-lg w-full text-center border border-white/5 relative z-10">
-                    <div className="w-24 h-24 bg-green-500/20 rounded-full flex items-center justify-center mx-auto mb-8 animate-pulse">
-                        <CheckCircle className="w-12 h-12 text-green-500" />
+            <div className="min-h-screen bg-slate-50 flex flex-col">
+                <header className="h-16 bg-white border-b border-slate-200 flex items-center px-6">
+                    <BrandMark subtitle="Secure Assessment" />
+                </header>
+                <main className="flex-1 flex items-center justify-center p-6">
+                    <div className="card max-w-lg w-full p-10 text-center">
+                        <div className="w-16 h-16 bg-emerald-50 ring-8 ring-emerald-50/50 rounded-full flex items-center justify-center mx-auto mb-6">
+                            <CheckCircle className="w-8 h-8 text-emerald-600" />
+                        </div>
+                        <h1 className="text-2xl font-semibold tracking-tight text-slate-900">Exam submitted successfully</h1>
+                        <p className="mt-3 text-slate-500 leading-relaxed">
+                            Thank you, {candidateName}. Your responses have been recorded and sent to the examination server.
+                            Results will be shared by your institution.
+                        </p>
+
+                        {sessionId && (
+                            <div className="mt-8 rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 flex items-center justify-between text-sm">
+                                <span className="text-slate-500">Submission reference</span>
+                                <span className="font-mono font-medium text-slate-800">{sessionId.substring(0, 12).toUpperCase()}</span>
+                            </div>
+                        )}
+
+                        <button
+                            onClick={() => {
+                                if (window.electronAPI) {
+                                    window.electronAPI.quitApp();
+                                } else {
+                                    // Attempt to close, fallback to blank
+                                    window.open('', '_self', '');
+                                    window.close();
+                                    window.location.href = 'about:blank';
+                                }
+                            }}
+                            className="btn btn-primary btn-lg w-full mt-8"
+                        >
+                            Close secure browser
+                        </button>
+                        <p className="mt-4 text-xs text-slate-400">You may now safely close this window.</p>
                     </div>
-                    <h1 className="text-4xl font-black mb-4 tracking-tighter">SUCCESSFULLY SUBMITTED</h1>
-                    <p className="text-gray-400 mb-10 text-lg leading-relaxed">
-                        Your assessment responses have been securely encrypted and transmitted to the central server.
-                    </p>
-                    <div className="bg-cyan-500/10 border border-cyan-500/20 text-cyan-400 p-4 rounded-2xl mb-10 text-sm font-bold uppercase tracking-widest">
-                        Integrity Verified: SECURE
-                    </div>
-                    <button
-                        onClick={() => {
-                            if (window.electronAPI) {
-                                window.electronAPI.quitApp();
-                            } else {
-                                // Attempt to close, fallback to blank
-                                window.open('', '_self', '');
-                                window.close();
-                                window.location.href = 'about:blank';
-                            }
-                        }}
-                        className="w-full py-5 rounded-3xl bg-white text-black font-black text-xl hover:bg-cyan-500 hover:text-white transition-all transform active:scale-95 shadow-xl shadow-white/5"
-                    >
-                        Close Browser
-                    </button>
-                    {/* Subtle footer */}
-                    <div className="mt-8 text-[10px] text-gray-600 font-bold tracking-[0.3em] uppercase">
-                        ParikshaX Secure Protocol v1.0
-                    </div>
-                </div>
+                </main>
             </div>
         );
     }
 
-    if (questions.length === 0) return <div className="min-h-screen bg-gray-900 text-white flex items-center justify-center">Loading Exam...</div>;
+    if (questions.length === 0) {
+        return (
+            <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center gap-4 text-slate-500">
+                <div className="w-8 h-8 border-[3px] border-slate-200 border-t-brand-600 rounded-full animate-spin" />
+                <span className="text-sm font-medium">Loading your exam…</span>
+            </div>
+        );
+    }
 
     const currentQuestion = questions[currentQuestionIndex];
     const isLastQuestionOfSection = currentQuestionIndex === questions.length - 1;
     const isLastSection = sections.length > 0 ? (currentSectionIndex === sections.length - 1) : true;
     const isFinalSubmit = isLastQuestionOfSection && isLastSection;
+    const answeredCount = questions.filter(q => userAnswers[q._id]).length;
 
     if (showInstructions) {
         const totalDuration = sections.reduce((acc, s) => acc + s.duration, 0);
         const totalQuestions = sections.reduce((acc, s) => acc + s.questions.length, 0);
+        const scanning = cameraConnected && faceScanStatus !== 'verified';
+
+        const checks = [
+            { ok: consentGiven, label: 'Proctoring consent accepted' },
+            { ok: cameraConnected, label: cameraConnected ? 'Camera & microphone connected' : 'No camera detected', warn: !cameraConnected },
+            { ok: faceScanStatus === 'verified', label: faceScanStatus === 'verified' ? 'Identity verified' : cameraConnected ? 'Verifying identity…' : 'Identity check skipped', warn: !cameraConnected },
+        ];
 
         return (
-            <div className="min-h-screen bg-[#0f1115] text-white flex items-center justify-center p-6">
-                <div className="max-w-4xl w-full">
-                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                        {/* Left Info */}
-                        <div className="lg:col-span-2 space-y-6">
-                            <div className="bg-gray-800/50 border border-gray-700 rounded-2xl p-8 backdrop-blur-sm">
-                                <h1 className="text-3xl font-bold mb-2 bg-gradient-to-r from-cyan-400 to-blue-500 bg-clip-text text-transparent">Assessment Overview</h1>
-                                <p className="text-gray-400 mb-8 border-b border-gray-700 pb-4">Please read the section details and instructions carefully.</p>
+            <div className="min-h-screen bg-slate-50 flex flex-col">
+                <header className="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-6 shrink-0">
+                    <BrandMark subtitle="Secure Assessment" />
+                    <div className="text-right">
+                        <div className="text-xs text-slate-500">Candidate</div>
+                        <div className="text-sm font-semibold text-slate-900">{candidateName}</div>
+                    </div>
+                </header>
 
-                                <div className="space-y-4">
-                                    {sections.map((section, idx) => (
-                                        <div key={idx} className="bg-gray-900/50 border border-gray-700 rounded-xl p-5 flex items-center justify-between group hover:border-cyan-500/50 transition-all">
-                                            <div className="flex items-center gap-4">
-                                                <div className="w-10 h-10 rounded-lg bg-gray-800 flex items-center justify-center text-cyan-400 font-bold font-mono">
-                                                    0{idx + 1}
-                                                </div>
-                                                <div>
-                                                    <div className="font-bold text-lg text-white">{section.title}</div>
-                                                    <div className="text-sm text-gray-500 uppercase tracking-widest font-medium">Part {idx + 1} of Assessment</div>
-                                                </div>
-                                            </div>
-                                            <div className="flex gap-8 text-right">
-                                                <div>
-                                                    <div className="text-xs text-gray-500 uppercase">Questions</div>
-                                                    <div className="font-bold text-white">{section.questions.length} Qs</div>
-                                                </div>
-                                                <div>
-                                                    <div className="text-xs text-gray-500 uppercase">Time limit</div>
-                                                    <div className="font-bold text-cyan-400">{section.duration} Mins</div>
-                                                </div>
-                                            </div>
+                <main className="flex-1 w-full max-w-6xl mx-auto px-6 py-8">
+                    <div className="mb-6">
+                        <h1 className="text-2xl font-semibold tracking-tight text-slate-900">Exam instructions</h1>
+                        <p className="text-sm text-slate-500 mt-1">Read the details below carefully before you begin.</p>
+                    </div>
+
+                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                        <div className="lg:col-span-2 space-y-6">
+                            {/* Summary */}
+                            <div className="grid grid-cols-3 gap-4">
+                                {[
+                                    { icon: ClipboardList, label: 'Sections', value: sections.length || 1 },
+                                    { icon: ListChecks, label: 'Questions', value: totalQuestions || questions.length },
+                                    { icon: Clock, label: 'Total duration', value: `${totalDuration} min` },
+                                ].map(({ icon: Icon, label, value }) => (
+                                    <div key={label} className="card p-4 flex items-center gap-3">
+                                        <div className="w-10 h-10 rounded-lg bg-brand-50 flex items-center justify-center shrink-0">
+                                            <Icon className="w-5 h-5 text-brand-600" />
                                         </div>
-                                    ))}
-                                </div>
+                                        <div className="min-w-0">
+                                            <div className="stat-label truncate">{label}</div>
+                                            <div className="text-lg font-semibold text-slate-900">{value}</div>
+                                        </div>
+                                    </div>
+                                ))}
                             </div>
 
-                            <div className="bg-blue-900/10 border border-blue-500/20 rounded-2xl p-6 flex flex-col sm:flex-row gap-6 items-center justify-between">
-                                <div className="flex items-center gap-4">
-                                    <div className="p-3 bg-blue-500/20 rounded-full text-blue-400"><Shield className="w-6 h-6" /></div>
-                                    <div>
-                                        <div className="font-bold">AI Proctoring Active</div>
-                                        <div className="text-sm text-gray-400">Environment and browser monitoring enabled.</div>
-                                    </div>
+                            {/* Sections table */}
+                            <div className="card overflow-hidden">
+                                <div className="card-header">
+                                    <h2 className="card-title">Section breakdown</h2>
                                 </div>
-                                <div className="flex gap-4">
-                                    <div className="text-center">
-                                        <div className="text-sm text-gray-500">Total Qs</div>
-                                        <div className="font-bold">{totalQuestions}</div>
-                                    </div>
-                                    <div className="w-px h-10 bg-gray-700"></div>
-                                    <div className="text-center">
-                                        <div className="text-sm text-gray-500">Duration</div>
-                                        <div className="font-bold">{totalDuration}m</div>
-                                    </div>
-                                </div>
+                                <table className="table">
+                                    <thead>
+                                        <tr>
+                                            <th className="w-16">#</th>
+                                            <th>Section</th>
+                                            <th className="text-right">Questions</th>
+                                            <th className="text-right">Time limit</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {sections.map((section, idx) => (
+                                            <tr key={idx}>
+                                                <td className="font-mono text-slate-400">{String(idx + 1).padStart(2, '0')}</td>
+                                                <td className="font-medium text-slate-900">{section.title}</td>
+                                                <td className="text-right">{section.questions.length}</td>
+                                                <td className="text-right font-medium text-slate-900">{section.duration} min</td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+
+                            {/* Rules */}
+                            <div className="card card-body">
+                                <h2 className="card-title flex items-center gap-2 mb-4">
+                                    <Info className="w-4 h-4 text-brand-600" /> General instructions
+                                </h2>
+                                <ol className="space-y-3 text-sm text-slate-600">
+                                    {[
+                                        'The exam runs in fullscreen mode. Leaving fullscreen pauses the exam and is recorded.',
+                                        'Do not switch tabs, minimise the window, or open other applications.',
+                                        'Sections are timed independently and must be completed in order. You cannot return to a previous section.',
+                                        'When a section timer reaches zero you will move to the next section automatically.',
+                                        'Keep your face clearly visible to the camera. Only you should be present in the room.',
+                                        'Copy, paste and right-click are disabled for the duration of the exam.',
+                                    ].map((rule, i) => (
+                                        <li key={i} className="flex gap-3">
+                                            <span className="w-5 h-5 rounded-full bg-slate-100 text-slate-600 text-xs font-semibold flex items-center justify-center shrink-0 mt-0.5">{i + 1}</span>
+                                            <span>{rule}</span>
+                                        </li>
+                                    ))}
+                                </ol>
                             </div>
                         </div>
 
-                        {/* Right Actions */}
+                        {/* Right: system check */}
                         <div className="space-y-6">
-                            <div className="bg-gray-800/50 border border-gray-700 rounded-2xl p-6">
-                                <h3 className="font-bold mb-4 flex items-center gap-2"><AlertCircle className="w-4 h-4 text-orange-400" /> Key Rules</h3>
-                                <ul className="space-y-3 text-sm text-gray-400">
-                                    <li className="flex gap-2"><span>•</span> Fullscreen mode is mandatory.</li>
-                                    <li className="flex gap-2"><span>•</span> No tab switching or window resizing.</li>
-                                    <li className="flex gap-2"><span>•</span> Sections are sequential. Once finished, you cannot go back.</li>
-                                    <li className="flex gap-2"><span>•</span> Ensure stable internet & camera access.</li>
-                                </ul>
-                            </div>
-
-                            {/* Pre-exam Camera Verification */}
-                            <div className="bg-black/40 border border-gray-700 rounded-2xl overflow-hidden aspect-video relative group">
-                                <video
-                                    ref={handleVideoRef}
-                                    autoPlay
-                                    playsInline
-                                    muted
-                                    className="absolute inset-0 w-full h-full object-cover transform scale-x-[-1]"
-                                />
-                                <div className={`absolute top-2 left-2 px-2 py-0.5 rounded text-[10px] font-mono border ${faceScanStatus === 'verified'
-                                    ? 'bg-green-500/20 text-green-400 border-green-500/30 font-black'
-                                    : faceScanStatus === 'scanning'
-                                        ? 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30 animate-pulse'
-                                        : 'bg-blue-500/20 text-blue-400 border-blue-500/30'
-                                    }`}>
-                                    {faceScanStatus === 'verified' ? 'FACE VERIFIED' : faceScanStatus === 'scanning' ? 'SCANNING FACE...' : 'PREVIEW ACTIVE'}
+                            <div className="card overflow-hidden">
+                                <div className="card-header">
+                                    <h2 className="card-title">System check</h2>
+                                    <span className={`badge ${faceScanStatus === 'verified' ? 'badge-success' : scanning ? 'badge-warning' : 'badge-neutral'}`}>
+                                        {faceScanStatus === 'verified' ? 'Ready' : scanning ? 'Scanning' : 'Preview'}
+                                    </span>
                                 </div>
+                                <div className="p-4">
+                                    <div className="relative aspect-video rounded-lg overflow-hidden bg-slate-900">
+                                        <video
+                                            ref={handleVideoRef}
+                                            autoPlay
+                                            playsInline
+                                            muted
+                                            className="absolute inset-0 w-full h-full object-cover transform scale-x-[-1]"
+                                        />
+                                        {!cameraConnected && (
+                                            <div className="absolute inset-0 flex flex-col items-center justify-center text-slate-400 text-xs gap-2">
+                                                <Camera className="w-6 h-6" /> Camera unavailable
+                                            </div>
+                                        )}
+                                        {scanning && (
+                                            <div className="absolute inset-6 border-2 border-dashed border-white/60 rounded-[40%] pointer-events-none" />
+                                        )}
+                                    </div>
+                                    {scanning && (
+                                        <p className="text-xs text-slate-500 mt-3 text-center">Look directly at the camera to verify your identity.</p>
+                                    )}
 
+                                    <ul className="mt-4 space-y-2.5">
+                                        {checks.map((c) => (
+                                            <li key={c.label} className="flex items-center gap-2.5 text-sm">
+                                                {c.ok ? (
+                                                    <CheckCircle className="w-4 h-4 text-emerald-600 shrink-0" />
+                                                ) : c.warn ? (
+                                                    <AlertCircle className="w-4 h-4 text-amber-500 shrink-0" />
+                                                ) : (
+                                                    <span className="w-4 h-4 border-2 border-slate-200 border-t-brand-600 rounded-full animate-spin shrink-0" />
+                                                )}
+                                                <span className={c.ok ? 'text-slate-700' : 'text-slate-500'}>{c.label}</span>
+                                            </li>
+                                        ))}
+                                    </ul>
+                                </div>
                             </div>
 
                             <button
                                 onClick={handleStartExam}
-                                disabled={cameraConnected && faceScanStatus !== 'verified'}
-                                className={`w-full group relative overflow-hidden rounded-2xl p-8 transition-all shadow-xl 
-                                    ${cameraConnected && faceScanStatus !== 'verified'
-                                        ? 'bg-gray-700 cursor-not-allowed opacity-50'
-                                        : 'bg-cyan-600 hover:bg-cyan-500 hover:shadow-cyan-500/20'}`}
+                                disabled={scanning}
+                                className="btn btn-primary btn-lg w-full py-3.5"
                             >
-                                <div className="relative z-10 flex flex-col items-center gap-2">
-                                    {cameraConnected && faceScanStatus !== 'verified' ? (
-                                        <div className="w-12 h-12 flex items-center justify-center">
-                                            <div className="w-8 h-8 border-4 border-gray-500 border-t-cyan-400 rounded-full animate-spin"></div>
-                                        </div>
-                                    ) : (
-                                        <Play className="w-12 h-12 text-white fill-white mb-2 group-hover:scale-110 transition-transform" />
-                                    )}
-                                    <span className="text-2xl font-black text-white uppercase tracking-tighter">
-                                        {cameraConnected && faceScanStatus !== 'verified' ? 'Scanning Face...' : 'Start Assessment'}
-                                    </span>
-                                    <span className={`text-xs font-medium uppercase tracking-widest ${cameraConnected && faceScanStatus !== 'verified' ? 'text-gray-400' : 'text-cyan-200'}`}>
-                                        {faceScanStatus === 'verified' ? 'Identity Verified • Ready' : cameraConnected ? 'Please look at camera' : 'Proceeding without Camera'}
-                                    </span>
-
-                                </div>
-                                <div className="absolute top-0 left-0 w-full h-full bg-gradient-to-br from-white/10 to-transparent pointer-events-none"></div>
+                                {scanning ? (
+                                    <><span className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" /> Verifying identity…</>
+                                ) : (
+                                    <><Play className="w-4 h-4 fill-current" /> Start exam</>
+                                )}
                             </button>
-
+                            <p className="text-xs text-slate-500 text-center -mt-3">
+                                {cameraConnected ? 'The timer starts as soon as you click Start exam.' : 'You are proceeding without a camera. This will be noted.'}
+                            </p>
                         </div>
                     </div>
-                </div>
+                </main>
             </div>
         );
     }
@@ -908,7 +969,7 @@ function ExamPage() {
 
     return (
         <div
-            className={`min-h-screen ${isFullscreen ? 'bg-black text-white' : 'bg-gray-900 text-white'} font-sans flex flex-col select-none drag-none`}
+            className="min-h-screen bg-slate-50 text-slate-900 flex flex-col select-none drag-none"
             onCopy={(e) => {
                 e.preventDefault();
                 return false;
@@ -921,55 +982,48 @@ function ExamPage() {
 
             {/* Internet Failure Modal */}
             {isOffline && (
-                <div className="fixed inset-0 bg-black/90 z-[60] flex items-center justify-center p-4 backdrop-blur-sm">
-                    <div className="bg-gray-900 p-8 rounded-2xl shadow-2xl max-w-lg w-full text-center border-2 border-yellow-500 animate-pulse">
-                        <Activity className="w-20 h-20 text-yellow-500 mx-auto mb-6" />
-                        <h1 className="text-3xl font-bold mb-4 text-white">Connection Lost</h1>
-                        <p className="text-gray-300 mb-6 text-lg">
-                            Your internet connection has been interrupted.
-                            <br />
-                            The exam is paused until connection is restored.
+                <div className="modal-backdrop z-[60] bg-slate-900/80">
+                    <div className="modal-panel max-w-md p-8 text-center">
+                        <div className="w-14 h-14 rounded-full bg-amber-50 flex items-center justify-center mx-auto mb-5">
+                            <WifiOff className="w-7 h-7 text-amber-600" />
+                        </div>
+                        <h1 className="text-xl font-semibold text-slate-900">Connection lost</h1>
+                        <p className="text-slate-500 mt-2 text-sm leading-relaxed">
+                            Your internet connection was interrupted. The exam will resume automatically once you are back online.
                         </p>
-                        <div className="inline-block px-4 py-2 bg-yellow-500/10 border border-yellow-500/30 rounded-lg text-yellow-400 font-bold animate-pulse">
-                            Reconnecting...
+                        <div className="mt-6 inline-flex items-center gap-2 text-sm font-medium text-amber-700">
+                            <span className="w-4 h-4 border-2 border-amber-200 border-t-amber-600 rounded-full animate-spin" />
+                            Reconnecting…
                         </div>
                     </div>
                 </div>
             )}
 
             {lockdownMode && (
-                <div className="fixed inset-0 bg-red-900 z-50 flex items-center justify-center p-4">
-
-                    <div className="bg-gray-900 p-8 rounded-2xl shadow-2xl max-w-2xl w-full text-center border-2 border-red-500 animate-pulse">
-                        <Activity className="w-24 h-24 text-red-500 mx-auto mb-6" />
-                        <h1 className="text-4xl font-bold mb-4 text-red-500">EXAM PAUSED</h1>
-                        <h2 className="text-2xl font-bold mb-4 text-white">Environment Lockdown Breached</h2>
-                        <p className="text-gray-300 mb-6 text-lg">
-                            You have exited fullscreen mode. This incident has been logged.
-                            <br />
-                            You cannot continue the exam until you return to fullscreen.
+                <div className="modal-backdrop z-50 bg-slate-900/95">
+                    <div className="modal-panel max-w-lg p-8 text-center">
+                        <div className="w-14 h-14 rounded-full bg-red-50 flex items-center justify-center mx-auto mb-5">
+                            <ShieldAlert className="w-7 h-7 text-red-600" />
+                        </div>
+                        <h1 className="text-xl font-semibold text-slate-900">Exam paused — fullscreen exited</h1>
+                        <p className="text-slate-500 mt-2 text-sm leading-relaxed">
+                            You left fullscreen mode. This incident has been recorded.
+                            Return to fullscreen to continue your exam.
                         </p>
 
-                        <div className="bg-gray-800/80 rounded-2xl p-6 mb-8 border border-gray-700">
-                            <div className="text-xs text-gray-500 uppercase tracking-widest mb-2 font-bold">Current Integrity Status</div>
-                            <div className="flex items-center justify-center gap-4">
-                                <div className={`text-4xl font-black ${integrityScore >= 80 ? 'text-green-500' : integrityScore >= 60 ? 'text-yellow-500' : 'text-red-500'}`}>
-                                    {integrityScore}%
-                                </div>
-                                <div className="text-left">
-                                    <div className={`text-xs font-black uppercase tracking-wider ${integrityScore >= 60 ? 'text-green-500/50' : 'text-red-500/50'}`}>
-                                        {integrityScore >= 60 ? 'Protocol Intact' : 'High Risk Level'}
-                                    </div>
-                                    <div className="text-[10px] text-gray-500 font-mono">ID: {sessionId?.substring(0, 8)}...</div>
-                                </div>
+                        <div className="mt-6 grid grid-cols-2 gap-3 text-left">
+                            <div className="rounded-lg border border-slate-200 p-3">
+                                <div className="stat-label">Integrity score</div>
+                                <div className={`text-xl font-semibold mt-0.5 ${toneText[integrityTone]}`}>{integrityScore}%</div>
+                            </div>
+                            <div className="rounded-lg border border-slate-200 p-3">
+                                <div className="stat-label">Breaches</div>
+                                <div className="text-xl font-semibold mt-0.5 text-slate-900">{lockdownBreachCount}</div>
                             </div>
                         </div>
 
-                        <button
-                            onClick={restoreFullscreen}
-                            className="w-full py-5 rounded-2xl bg-red-600 hover:bg-red-700 font-black text-white text-xl transition-all shadow-xl shadow-red-900/40 active:scale-95"
-                        >
-                            Return to Fullscreen to Continue
+                        <button onClick={restoreFullscreen} className="btn btn-primary btn-lg w-full mt-6">
+                            <Maximize className="w-4 h-4" /> Return to fullscreen
                         </button>
                     </div>
                 </div>
@@ -984,202 +1038,228 @@ function ExamPage() {
 
             <ConfirmationModal
                 isOpen={showConfirmModal}
-                title="Submit Assessment?"
-                message="Are you sure you want to submit your exam? This action cannot be undone. The secure browser will close immediately after submission."
+                title="Submit your exam?"
+                message={`You have answered ${answeredCount} of ${questions.length} questions in this section.\nOnce submitted, you cannot change your answers and the secure browser will close.`}
                 onConfirm={confirmAndExit}
                 onCancel={() => setShowConfirmModal(false)}
             />
 
             {!isFullscreen ? (
-                <div className="flex-1 flex flex-col items-center justify-center p-4">
-                    <div className="bg-gray-800 p-8 rounded-2xl shadow-2xl max-w-2xl w-full text-center border border-gray-700">
-                        <Monitor className="w-16 h-16 text-cyan-500 mx-auto mb-6" />
-                        <h1 className="text-3xl font-bold mb-4">Environment Setup Check</h1>
-                        <p className="text-gray-400 mb-8">
-                            Before starting the exam, please ensure you are in a quiet room.
-                            The system will enforce fullscreen mode and monitor tab switching.
-                        </p>
-                        <div className="space-y-4 text-left bg-gray-900/50 p-6 rounded-lg mb-8 border border-gray-700">
-                            <div className="flex items-center gap-3">
-                                <div className={`w-3 h-3 rounded-full ${cameraConnected ? 'bg-green-500' : 'bg-red-500 animate-pulse'}`}></div>
-                                <span>{cameraConnected ? 'Camera & Microphone Connected' : 'Camera Disconnected'}</span>
+                <div className="flex-1 flex flex-col">
+                    <header className="h-16 bg-white border-b border-slate-200 flex items-center px-6 shrink-0">
+                        <BrandMark subtitle="Secure Assessment" />
+                    </header>
+                    <div className="flex-1 flex items-center justify-center p-6">
+                        <div className="card max-w-lg w-full p-8">
+                            <div className="w-12 h-12 rounded-lg bg-brand-50 flex items-center justify-center mb-5">
+                                <Monitor className="w-6 h-6 text-brand-600" />
                             </div>
-                            <div className="flex items-center gap-3">
-                                <div className={`w-3 h-3 rounded-full ${consentGiven ? 'bg-green-500' : 'bg-yellow-500 animate-pulse'}`}></div>
-                                <span>{consentGiven ? 'Consent Given' : 'Waiting for Consent'}</span>
-                            </div>
-                            <div className="flex items-center gap-3">
-                                <div className="w-3 h-3 rounded-full bg-yellow-500 animate-pulse"></div>
-                                <span>Waiting for Fullscreen</span>
-                            </div>
-                        </div>
+                            <h1 className="text-xl font-semibold text-slate-900">Environment check</h1>
+                            <p className="text-sm text-slate-500 mt-1.5 leading-relaxed">
+                                Make sure you are in a quiet room. The exam will run in fullscreen and tab switching will be monitored.
+                            </p>
 
-                        <div className="flex flex-col gap-4">
-                            {!cameraConnected && (
-                                <button
-                                    onClick={startCamera}
-                                    className="w-full py-4 rounded-xl font-bold text-lg transition-all flex items-center justify-center gap-2 bg-gray-700 hover:bg-gray-600 text-white"
-                                >
-                                    <Eye className="w-5 h-5" />
-                                    Try Connecting Camera
+                            <ul className="mt-6 divide-y divide-slate-100 rounded-lg border border-slate-200">
+                                {[
+                                    { ok: cameraConnected, label: cameraConnected ? 'Camera & microphone connected' : 'Camera not connected' },
+                                    { ok: consentGiven, label: consentGiven ? 'Consent given' : 'Waiting for consent' },
+                                    { ok: false, label: 'Waiting for fullscreen' },
+                                ].map(({ ok, label }) => (
+                                    <li key={label} className="flex items-center gap-3 px-4 py-3 text-sm">
+                                        <span className={`w-2 h-2 rounded-full ${ok ? 'bg-emerald-500' : 'bg-amber-400'}`} />
+                                        <span className="text-slate-700">{label}</span>
+                                    </li>
+                                ))}
+                            </ul>
+
+                            <div className="mt-6 flex flex-col gap-3">
+                                {!cameraConnected && (
+                                    <button onClick={startCamera} className="btn btn-secondary w-full py-3">
+                                        <Eye className="w-4 h-4" /> Try connecting camera
+                                    </button>
+                                )}
+                                <button onClick={enterFullscreen} disabled={!consentGiven} className="btn btn-primary w-full py-3">
+                                    <Maximize className="w-4 h-4" />
+                                    {cameraConnected ? 'Enter fullscreen & start exam' : 'Enter secure mode (no camera)'}
                                 </button>
-                            )}
-
-                            <button
-                                onClick={enterFullscreen}
-                                disabled={!consentGiven}
-                                className={`w-full py-4 rounded-xl font-bold text-lg transition-all flex items-center justify-center gap-2
-                                ${consentGiven
-                                        ? 'bg-gradient-to-r from-cyan-600 to-blue-600 hover:shadow-lg hover:shadow-cyan-500/20'
-                                        : 'bg-gray-700 cursor-not-allowed opacity-50'}`}
-                            >
-                                <Maximize className="w-5 h-5" />
-                                {cameraConnected ? 'Enter Fullscreen Mode & Start Exam' : 'Enter Secure Mode (No Camera)'}
-                            </button>
+                            </div>
                         </div>
                     </div>
                 </div>
             ) : (
-                <div className="flex-1 flex flex-col relative h-screen">
+                <div className="flex-1 flex flex-col h-screen">
                     {/* Header */}
-                    <header className="h-16 bg-gray-900 border-b border-gray-800 flex items-center justify-between px-6 select-none shrink-0">
-                        <div className="flex items-center gap-2">
-                            <span className="font-bold text-xl text-cyan-400">ParikshaX</span>
-                            <span className="text-xs px-2 py-0.5 rounded bg-red-500/20 text-red-400 border border-red-500/30 font-bold animate-pulse">REC</span>
-                        </div>
-                        <div className="flex flex-col items-center">
-                            <div className="text-[10px] text-gray-500 uppercase tracking-widest mb-1">Current Section</div>
-                            <div className="px-3 py-1 rounded-full bg-cyan-500/10 border border-cyan-500/30 text-cyan-400 font-bold text-sm">
-                                {sections[currentSectionIndex]?.title || 'Assessment'}
-                            </div>
-                        </div>
-                        <div className="flex items-center gap-4">
-                            <div className={`relative flex items-center justify-center w-48 h-10 rounded-xl overflow-hidden border transition-all duration-500 bg-gray-900/50 ${timeLeft < 60 ? 'border-red-500 shadow-lg shadow-red-500/20' : 'border-cyan-500/30'}`}>
-                                <div
-                                    className={`absolute left-0 top-0 h-full transition-all duration-1000 ${timeLeft < 60 ? 'bg-red-500/20' : 'bg-cyan-500/10'}`}
-                                    style={{ width: `${(timeLeft / (sections[currentSectionIndex]?.duration * 60 || 3600)) * 100}%` }}
-                                ></div>
-                                <div className="relative z-10 flex items-center gap-2">
-                                    <Clock className={`w-4 h-4 ${timeLeft < 60 ? 'text-red-500 animate-pulse' : 'text-cyan-400'}`} />
-                                    <span className={`text-xl font-mono font-black tracking-widest ${timeLeft < 60 ? 'text-red-500 animate-pulse' : 'text-white'}`}>
-                                        {formatTime(timeLeft)}
-                                    </span>
+                    <header className="h-16 bg-white border-b border-slate-200 flex items-center justify-between gap-4 px-4 md:px-6 shrink-0">
+                        <div className="flex items-center gap-4 min-w-0">
+                            <BrandMark />
+                            <div className="hidden md:block h-8 w-px bg-slate-200" />
+                            <div className="hidden md:block min-w-0">
+                                <div className="text-xs text-slate-500">Current section</div>
+                                <div className="text-sm font-semibold text-slate-900 truncate">
+                                    {sections[currentSectionIndex]?.title || 'Assessment'}
                                 </div>
                             </div>
                         </div>
-                        <div className="w-32"></div> {/* Spacer for alignment */}
+
+                        <div className="flex items-center gap-4">
+                            <div className="hidden sm:flex items-center gap-2 text-xs font-medium text-red-600">
+                                <span className="relative flex h-2 w-2">
+                                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75" />
+                                    <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500" />
+                                </span>
+                                Proctored
+                            </div>
+                            <div className="hidden lg:block text-right">
+                                <div className="text-xs text-slate-500">Candidate</div>
+                                <div className="text-sm font-semibold text-slate-900 max-w-[180px] truncate">{candidateName}</div>
+                            </div>
+                            <div
+                                className={`relative overflow-hidden flex items-center gap-2 rounded-lg px-4 h-10 min-w-[128px] justify-center ring-1 ring-inset
+                                    ${timerTone === 'danger' ? 'bg-red-50 ring-red-200 text-red-700' : timerTone === 'warning' ? 'bg-amber-50 ring-amber-200 text-amber-800' : 'bg-slate-900 ring-slate-900 text-white'}`}
+                                aria-label="Time remaining"
+                            >
+                                <Clock className="w-4 h-4 opacity-80" />
+                                <span className="font-mono text-lg font-semibold tabular-nums">{formatTime(timeLeft)}</span>
+                                <div
+                                    className={`absolute left-0 bottom-0 h-0.5 transition-all duration-1000 ${timerTone === 'normal' ? 'bg-brand-400' : 'bg-current'}`}
+                                    style={{ width: `${(timeLeft / (sections[currentSectionIndex]?.duration * 60 || 3600)) * 100}%` }}
+                                />
+                            </div>
+                        </div>
                     </header>
+
+                    {/* Section stepper */}
+                    {sections.length > 1 && (
+                        <div className="bg-white border-b border-slate-200 px-4 md:px-6 overflow-x-auto shrink-0">
+                            <div className="flex items-center gap-1 h-11">
+                                {sections.map((s, idx) => {
+                                    const done = idx < currentSectionIndex;
+                                    const active = idx === currentSectionIndex;
+                                    return (
+                                        <React.Fragment key={idx}>
+                                            {idx > 0 && <ChevronRight className="w-4 h-4 text-slate-300 shrink-0" />}
+                                            <div className={`flex items-center gap-2 px-2.5 py-1 rounded-md text-sm whitespace-nowrap
+                                                ${active ? 'bg-brand-50 text-brand-700 font-semibold' : done ? 'text-slate-500' : 'text-slate-400'}`}>
+                                                {done ? (
+                                                    <CheckCircle className="w-4 h-4 text-emerald-600" />
+                                                ) : (
+                                                    <span className={`w-5 h-5 rounded-full text-[11px] font-semibold flex items-center justify-center
+                                                        ${active ? 'bg-brand-600 text-white' : 'bg-slate-100 text-slate-500'}`}>{idx + 1}</span>
+                                                )}
+                                                {s.title}
+                                            </div>
+                                        </React.Fragment>
+                                    );
+                                })}
+                            </div>
+                        </div>
+                    )}
 
                     <div className="flex flex-1 overflow-hidden">
                         {/* Main Exam Area */}
-                        <main className="flex-1 p-8 flex flex-col max-w-5xl mx-auto w-full">
+                        <main className="flex-1 overflow-y-auto">
+                            <div className="max-w-4xl mx-auto w-full p-4 md:p-8 flex flex-col min-h-full">
+                                <div className="card flex-1 flex flex-col">
+                                    <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200">
+                                        <div className="text-sm font-semibold text-slate-900">
+                                            Question {currentQuestionIndex + 1}
+                                            <span className="font-normal text-slate-400"> / {questions.length}</span>
+                                        </div>
+                                        <span className={`badge ${userAnswers[currentQuestion._id] ? 'badge-success' : 'badge-neutral'}`}>
+                                            {userAnswers[currentQuestion._id] ? 'Answered' : 'Not answered'}
+                                        </span>
+                                    </div>
 
-                            {/* Question Progress */}
-                            <div className="mb-6 flex items-center justify-between">
-                                <div className="text-lg text-gray-400">
-                                    Question <span className="text-white font-bold">{currentQuestionIndex + 1}</span> of {questions.length}
-                                </div>
-                                <div className="flex gap-1">
-                                    {questions.map((_, idx) => (
-                                        <div
-                                            key={idx}
-                                            className={`w-3 h-3 rounded-full ${idx === currentQuestionIndex ? 'bg-cyan-500' :
-                                                userAnswers[questions[idx]._id || idx] ? 'bg-green-500/50' : 'bg-gray-700'
-                                                }`}
-                                        />
-                                    ))}
-                                </div>
-                            </div>
+                                    <div className="p-6 md:p-8 flex-1">
+                                        <h2 className="text-lg md:text-xl font-medium text-slate-900 leading-relaxed">
+                                            {currentQuestion.questionText}
+                                        </h2>
 
-                            {/* Question Card */}
-                            <div className="bg-gray-800 p-8 rounded-2xl border border-gray-700 flex-1 flex flex-col shadow-xl">
-                                <h2 className="text-2xl font-bold mb-8 leading-relaxed">
-                                    {currentQuestion.questionText}
-                                </h2>
+                                        <div className="mt-8 space-y-3" role="radiogroup">
+                                            {currentQuestion.options.map((opt, i) => {
+                                                const selected = userAnswers[currentQuestion._id] === opt;
+                                                return (
+                                                    <label
+                                                        key={i}
+                                                        className={`flex items-center gap-4 px-4 py-3.5 rounded-lg cursor-pointer border transition-colors
+                                                            ${selected
+                                                                ? 'bg-brand-50 border-brand-500 ring-1 ring-brand-500'
+                                                                : 'bg-white border-slate-200 hover:border-slate-300 hover:bg-slate-50'}`}
+                                                    >
+                                                        <span className={`w-8 h-8 rounded-full border text-sm font-semibold flex items-center justify-center shrink-0 transition-colors
+                                                            ${selected ? 'bg-brand-600 border-brand-600 text-white' : 'border-slate-300 text-slate-500'}`}>
+                                                            {String.fromCharCode(65 + i)}
+                                                        </span>
+                                                        <input
+                                                            type="radio"
+                                                            name={`q-${currentQuestion._id}`}
+                                                            className="sr-only"
+                                                            checked={selected}
+                                                            onChange={() => {
+                                                                setUserAnswers(prev => ({
+                                                                    ...prev,
+                                                                    [currentQuestion._id]: opt
+                                                                }));
+                                                            }}
+                                                        />
+                                                        <span className={`text-base ${selected ? 'text-slate-900 font-medium' : 'text-slate-700'}`}>{opt}</span>
+                                                    </label>
+                                                );
+                                            })}
+                                        </div>
+                                    </div>
 
-                                <div className="space-y-4 flex-1 overflow-y-auto pr-2">
-                                    {currentQuestion.options.map((opt, i) => (
-                                        <label
-                                            key={i}
-                                            className={`flex items-center gap-4 p-5 rounded-xl cursor-pointer border-2 transition-all group
-                                                ${userAnswers[currentQuestion._id] === opt
-                                                    ? 'bg-cyan-900/20 border-cyan-500 shadow-lg shadow-cyan-900/20'
-                                                    : 'bg-gray-900/50 border-gray-700 hover:border-gray-500 hover:bg-gray-700/50'}`
-                                            }
+                                    {/* Navigation */}
+                                    <div className="flex items-center justify-between gap-3 px-6 py-4 border-t border-slate-200 bg-slate-50/60 rounded-b-xl">
+                                        <div className="flex items-center gap-2">
+                                            <button onClick={handlePrev} disabled={currentQuestionIndex === 0} className="btn btn-secondary">
+                                                <ChevronLeft className="w-4 h-4" /> Previous
+                                            </button>
+                                            <button
+                                                onClick={() => setUserAnswers(prev => {
+                                                    const next = { ...prev };
+                                                    delete next[currentQuestion._id];
+                                                    return next;
+                                                })}
+                                                disabled={!userAnswers[currentQuestion._id]}
+                                                className="btn btn-ghost hidden sm:inline-flex"
+                                            >
+                                                <RotateCcw className="w-4 h-4" /> Clear response
+                                            </button>
+                                        </div>
+
+                                        <button
+                                            onClick={handleNext}
+                                            className={`btn ${isFinalSubmit ? 'btn-success' : 'btn-primary'} px-6`}
                                         >
-                                            <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center shrink-0
-                                                ${userAnswers[currentQuestion._id] === opt
-                                                    ? 'border-cyan-500 bg-cyan-500'
-                                                    : 'border-gray-500 group-hover:border-gray-400'}`
-                                            }>
-                                                {userAnswers[currentQuestion._id] === opt && <CheckCircle className="w-4 h-4 text-white" />}
-                                            </div>
-                                            <input
-                                                type="radio"
-                                                name={`q-${currentQuestion._id}`}
-                                                className="hidden"
-                                                checked={userAnswers[currentQuestion._id] === opt}
-                                                onChange={() => {
-                                                    setUserAnswers(prev => ({
-                                                        ...prev,
-                                                        [currentQuestion._id]: opt
-                                                    }));
-                                                }}
-                                            />
-                                            <span className="text-lg">{opt}</span>
-                                        </label>
-                                    ))}
+                                            {isFinalSubmit ? 'Submit exam' : isLastQuestionOfSection ? 'Save & next section' : 'Save & next'}
+                                            {isFinalSubmit ? <Send className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+                                        </button>
+                                    </div>
                                 </div>
-                            </div>
-
-
-
-                            {/* Navigation Buttons */}
-                            <div className="mt-8 flex justify-between">
-                                <button
-                                    onClick={handlePrev}
-                                    disabled={currentQuestionIndex === 0}
-                                    className={`px-6 py-3 rounded-xl font-bold flex items-center gap-2 transition-all
-                                        ${currentQuestionIndex === 0
-                                            ? 'bg-gray-800 text-gray-600 cursor-not-allowed'
-                                            : 'bg-gray-700 hover:bg-gray-600 text-white'}`
-                                    }
-                                >
-                                    <ChevronLeft className="w-5 h-5" /> Previous
-                                </button>
-
-                                <button
-                                    onClick={handleNext}
-                                    className={`px-8 py-3 rounded-xl font-bold flex items-center gap-2 transition-all shadow-lg
-                                        ${isFinalSubmit
-                                            ? 'bg-red-600 hover:bg-red-700 hover:shadow-red-500/20'
-                                            : isLastQuestionOfSection ? 'bg-orange-600 hover:bg-orange-700' : 'bg-gradient-to-r from-cyan-600 to-blue-600 hover:shadow-cyan-500/20'}`
-                                    }
-                                >
-                                    {isFinalSubmit ? 'Submit Exam' : isLastQuestionOfSection ? 'Next Section' : 'Next Question'}
-                                    {!isFinalSubmit && <ChevronRight className="w-5 h-5" />}
-                                </button>
                             </div>
                         </main>
 
-                        {/* Side Monitor Panel */}
-                        <aside className="w-80 bg-gray-900 border-l border-gray-800 p-4 flex flex-col gap-6 shrink-0">
-                            {/* Camera Feed Placeholder */}
+                        {/* Side Panel */}
+                        <aside className="hidden md:flex w-80 bg-white border-l border-slate-200 flex-col shrink-0 overflow-y-auto">
                             {/* Camera Feed */}
-                            <div className="aspect-video bg-black rounded-lg border border-gray-700 relative overflow-hidden group">
-                                <video
-                                    ref={handleVideoRef}
-                                    autoPlay
-                                    playsInline
-                                    muted
-                                    className="absolute inset-0 w-full h-full object-cover transform scale-x-[-1]"
-                                />
-                                <div className="absolute top-2 left-2 flex gap-1 z-10">
-                                    <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
-                                    <span className="text-[10px] text-green-500 font-mono">LIVE FEED</span>
+                            <div className="p-4 border-b border-slate-200">
+                                <div className="aspect-video bg-slate-900 rounded-lg relative overflow-hidden">
+                                    <video
+                                        ref={handleVideoRef}
+                                        autoPlay
+                                        playsInline
+                                        muted
+                                        className="absolute inset-0 w-full h-full object-cover transform scale-x-[-1]"
+                                    />
+                                    <div className="absolute top-2 left-2 flex items-center gap-1.5 bg-black/50 text-white text-[10px] font-medium px-2 py-0.5 rounded">
+                                        <span className="w-1.5 h-1.5 rounded-full bg-red-500" /> LIVE
+                                    </div>
                                 </div>
-                                <div className="absolute bottom-2 left-2 flex flex-col items-start gap-1 z-10">
-                                    <div className="text-[10px] text-green-500 font-mono">Mic: Active</div>
+                                <div className="flex items-center justify-between mt-2.5 text-xs">
+                                    <span className="text-slate-500 flex items-center gap-1.5">
+                                        <Mic className="w-3.5 h-3.5" /> Microphone active
+                                    </span>
                                     <button
                                         onClick={() => {
                                             if (stream && videoRef.current) {
@@ -1189,63 +1269,84 @@ function ExamPage() {
                                                 startCamera();
                                             }
                                         }}
-                                        className="text-[9px] text-cyan-400 hover:text-white font-mono bg-cyan-900/40 px-1 rounded border border-cyan-800/50"
+                                        className="text-brand-600 hover:text-brand-700 font-medium flex items-center gap-1"
                                     >
-                                        ↻ Refresh Camera
+                                        <RotateCcw className="w-3 h-3" /> Refresh
                                     </button>
                                 </div>
                             </div>
 
-                            {/* Status Board */}
-                            <div className="space-y-4">
-                                <div className="p-3 bg-gray-800 rounded-lg border border-gray-700">
-                                    <div className="text-xs text-gray-500 uppercase tracking-wider mb-1">Integrity Score</div>
-                                    <div className="flex items-end gap-2">
-                                        <span className={`text-2xl font-bold ${integrityScore >= 80 ? 'text-green-400' : integrityScore >= 60 ? 'text-yellow-400' : 'text-red-400'}`}>
-                                            {integrityScore.toFixed(0)}%
-                                        </span>
-                                        <span className="text-xs text-gray-400 mb-1">
-                                            {integrityScore >= 80 ? 'Excellent' : integrityScore >= 60 ? 'Fair' : 'Poor'}
-                                        </span>
-                                    </div>
-                                    <div className="w-full bg-gray-700 h-1.5 rounded-full mt-2 overflow-hidden">
-                                        <div className={`h-full ${integrityScore >= 80 ? 'bg-green-500' : integrityScore >= 60 ? 'bg-yellow-500' : 'bg-red-500'}`} style={{ width: `${integrityScore}%` }}></div>
-                                    </div>
+                            {/* Question Palette */}
+                            <div className="p-4 border-b border-slate-200">
+                                <div className="flex items-center justify-between mb-3">
+                                    <h3 className="text-sm font-semibold text-slate-900">Question palette</h3>
+                                    <span className="text-xs text-slate-500">{answeredCount}/{questions.length} answered</span>
                                 </div>
-
-                                <div className="grid grid-cols-2 gap-3">
-                                    <div className="p-3 bg-gray-800 rounded-lg border border-gray-700">
-                                        <div className="text-xs text-gray-500 mb-1">Tab Switches</div>
-                                        <div className={`text-xl font-bold ${tabSwitches > 0 ? 'text-red-400' : 'text-white'}`}>
-                                            {tabSwitches}
-                                        </div>
-                                    </div>
-                                    <div className="p-3 bg-gray-800 rounded-lg border border-gray-700">
-                                        <div className="text-xs text-gray-500 mb-1">Focus Lost</div>
-                                        <div className="text-xl font-bold text-white">
-                                            {Math.round(focusLostTime)}s
-                                        </div>
-                                    </div>
-                                    <div className="p-3 bg-gray-800 rounded-lg border border-gray-700 col-span-2">
-                                        <div className="text-xs text-gray-500 mb-1">Lockdown Breaches</div>
-                                        <div className="text-xl font-bold text-red-500">
-                                            {lockdownBreachCount}
-                                        </div>
-                                    </div>
-
+                                <div className="grid grid-cols-5 gap-2">
+                                    {questions.map((q, idx) => {
+                                        const isCurrent = idx === currentQuestionIndex;
+                                        const isAnswered = !!userAnswers[q._id];
+                                        return (
+                                            <button
+                                                key={q._id || idx}
+                                                onClick={() => setCurrentQuestionIndex(idx)}
+                                                className={`h-9 rounded-md text-sm font-semibold transition-colors
+                                                    ${isAnswered ? 'bg-emerald-600 text-white hover:bg-emerald-700' : 'bg-white border border-slate-300 text-slate-600 hover:bg-slate-50'}
+                                                    ${isCurrent ? 'ring-2 ring-brand-500 ring-offset-2' : ''}`}
+                                                aria-label={`Go to question ${idx + 1}`}
+                                            >
+                                                {idx + 1}
+                                            </button>
+                                        );
+                                    })}
+                                </div>
+                                <div className="flex items-center gap-4 mt-4 text-xs text-slate-500">
+                                    <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-sm bg-emerald-600" /> Answered</span>
+                                    <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-sm border border-slate-300" /> Not answered</span>
                                 </div>
                             </div>
 
-                            {/* Warnings Stream */}
-                            <div className="flex-1 bg-black/20 rounded-lg border border-gray-800 p-3 overflow-hidden flex flex-col">
-                                <div className="text-xs text-gray-500 uppercase tracking-wider mb-2 flex items-center gap-2">
-                                    <Activity className="w-3 h-3" /> Event Log
+                            {/* Proctoring status */}
+                            <div className="p-4 border-b border-slate-200 space-y-3">
+                                <h3 className="text-sm font-semibold text-slate-900">Proctoring status</h3>
+                                <div>
+                                    <div className="flex items-center justify-between text-xs mb-1.5">
+                                        <span className="text-slate-500">Integrity score</span>
+                                        <span className={`font-semibold ${toneText[integrityTone]}`}>{integrityScore.toFixed(0)}%</span>
+                                    </div>
+                                    <div className="w-full bg-slate-100 h-1.5 rounded-full overflow-hidden">
+                                        <div className={`h-full rounded-full transition-all ${toneBar[integrityTone]}`} style={{ width: `${integrityScore}%` }} />
+                                    </div>
                                 </div>
-                                <div className="flex-1 overflow-y-auto space-y-2 text-xs font-mono">
-                                    {warnings.length === 0 && <span className="text-gray-600 italic">No suspicious activity detected.</span>}
+                                <dl className="grid grid-cols-3 gap-2 text-center">
+                                    {[
+                                        { label: 'Tab switches', value: tabSwitches, bad: tabSwitches > 0 },
+                                        { label: 'Focus lost', value: `${Math.round(focusLostTime)}s`, bad: focusLostTime > 0 },
+                                        { label: 'Breaches', value: lockdownBreachCount, bad: lockdownBreachCount > 0 },
+                                    ].map(({ label, value, bad }) => (
+                                        <div key={label} className="rounded-md bg-slate-50 py-2">
+                                            <dd className={`text-base font-semibold ${bad ? 'text-red-600' : 'text-slate-900'}`}>{value}</dd>
+                                            <dt className="text-[10px] text-slate-500 mt-0.5">{label}</dt>
+                                        </div>
+                                    ))}
+                                </dl>
+                            </div>
+
+                            {/* Alerts */}
+                            <div className="p-4 flex-1 min-h-[140px] flex flex-col">
+                                <h3 className="text-sm font-semibold text-slate-900 flex items-center gap-2 mb-3">
+                                    <Activity className="w-4 h-4 text-slate-400" /> Alerts
+                                </h3>
+                                <div className="flex-1 space-y-2 text-xs">
+                                    {warnings.length === 0 && (
+                                        <div className="flex items-center gap-2 text-slate-500">
+                                            <CheckCircle className="w-4 h-4 text-emerald-600" /> No issues detected.
+                                        </div>
+                                    )}
                                     {warnings.map(w => (
-                                        <div key={w.id} className="text-yellow-500 border-l-2 border-yellow-500 pl-2 py-1">
-                                            {w.msg}
+                                        <div key={w.id} className="flex gap-2 rounded-md bg-amber-50 border border-amber-200 text-amber-800 px-2.5 py-2">
+                                            <AlertCircle className="w-3.5 h-3.5 shrink-0 mt-px" />
+                                            <span>{w.msg}</span>
                                         </div>
                                     ))}
                                 </div>

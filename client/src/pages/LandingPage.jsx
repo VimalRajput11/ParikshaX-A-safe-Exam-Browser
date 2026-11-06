@@ -1,8 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Shield, Lock, User, Key, ChevronRight, Hash } from 'lucide-react';
+import { Lock, User, Hash, ArrowRight, Camera, ClipboardCheck } from 'lucide-react';
 import { API_BASE_URL } from '../config';
 import AlertModal from '../components/AlertModal';
+import BrandMark from '../components/BrandMark';
+
+const FEATURES = [
+    { icon: Lock, title: 'Lockdown environment', text: 'Fullscreen mode with tab and focus monitoring.' },
+    { icon: Camera, title: 'Remote proctoring', text: 'Camera-based identity verification throughout.' },
+    { icon: ClipboardCheck, title: 'Guided experience', text: 'Clear instructions and section timers before you start.' },
+];
 
 function LandingPage() {
     const navigate = useNavigate();
@@ -18,6 +25,7 @@ function LandingPage() {
 
     const [examCode, setExamCode] = useState('');
     const [candidateId, setCandidateId] = useState('');
+    const [loading, setLoading] = useState(false);
 
     // Custom Alert State
     const [alertConfig, setAlertConfig] = useState({ isOpen: false, title: '', message: '', type: 'error', onClose: null });
@@ -31,10 +39,11 @@ function LandingPage() {
 
         // Student Validation against Server
         if (!examCode || !candidateId) {
-            showAlert('Wait a moment', 'Please enter both Exam Code and Candidate ID.', 'warning');
+            showAlert('Missing details', 'Please enter both your Exam Code and Candidate ID.', 'warning');
             return;
         }
 
+        setLoading(true);
         try {
             // Verify Exam
             const examRes = await fetch(`${API_BASE_URL}/exams/${examCode}`);
@@ -71,11 +80,12 @@ function LandingPage() {
 
         } catch (error) {
             console.error(error);
+            setLoading(false);
             const isAccessDenied = error.message.toLowerCase().includes('already completed') || error.message.toLowerCase().includes('not assigned');
 
             showAlert(
-                isAccessDenied ? 'Access Denied' : 'Login Failed',
-                error.message || 'Something went wrong. Please check your IDs.',
+                isAccessDenied ? 'Access denied' : 'Sign in failed',
+                error.message || 'Something went wrong. Please check your details.',
                 'error',
                 () => {
                     if (isAccessDenied && window.electronAPI) {
@@ -87,106 +97,120 @@ function LandingPage() {
     };
 
     return (
-        <div className="h-screen bg-[#0f1115] text-white font-sans flex overflow-hidden select-none drag-none">
+        <div className="min-h-screen bg-white text-slate-900 flex select-none drag-none">
 
-            {/* Left Decoration - Abstract Secure Graphic */}
-            <div className="hidden lg:flex w-1/2 relative items-center justify-center bg-gray-900 border-r border-gray-800">
-                <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20"></div>
-                <div className="absolute top-0 left-0 w-full h-full bg-gradient-to-br from-cyan-900/20 via-transparent to-purple-900/20"></div>
+            {/* Left — Brand panel */}
+            <aside className="hidden lg:flex lg:w-[44%] xl:w-[40%] relative flex-col justify-between bg-slate-900 text-white p-12 overflow-hidden">
+                <div
+                    className="absolute inset-0 opacity-[0.07] pointer-events-none"
+                    style={{ backgroundImage: 'radial-gradient(circle at 1px 1px, white 1px, transparent 0)', backgroundSize: '24px 24px' }}
+                />
+                <div className="absolute -bottom-32 -right-32 w-96 h-96 rounded-full bg-brand-600/30 blur-3xl pointer-events-none" />
 
-                <div className="relative z-10 flex flex-col items-center">
-                    <div className="w-32 h-32 mb-8 rounded-3xl bg-gradient-to-tr from-cyan-500 to-blue-600 flex items-center justify-center shadow-[0_0_50px_rgba(6,182,212,0.3)]">
-                        <Shield className="w-16 h-16 text-white" />
-                    </div>
-                    <h1 className="text-4xl font-bold mb-2 tracking-tight">ParikshaX</h1>
-                    <p className="text-gray-400 font-medium">Secure Exam Environment</p>
-
-                    <div className="mt-12 space-y-4 opacity-70">
-                        <div className="flex items-center gap-3 text-sm text-gray-400">
-                            <div className="w-2 h-2 rounded-full bg-green-500"></div>
-                            <span>System Integrity Check: <span className="text-green-400">Passed</span></span>
-                        </div>
-                        <div className="flex items-center gap-3 text-sm text-gray-400">
-                            <div className="w-2 h-2 rounded-full bg-green-500"></div>
-                            <span>Secure Boot: <span className="text-green-400">Enabled</span></span>
-                        </div>
-                        <div className="flex items-center gap-3 text-sm text-gray-400">
-                            <div className="w-2 h-2 rounded-full bg-green-500"></div>
-                            <span>App Version: <span className="text-green-400">v1.2.0</span></span>
-                        </div>
-                    </div>
+                <div className="relative">
+                    <BrandMark tone="light" subtitle="Secure Assessment Platform" size="lg" />
                 </div>
-            </div>
 
-            {/* Right Side - Login Panel */}
-            <div className="w-full lg:w-1/2 flex items-center justify-center p-8 relative">
-                <div className="max-w-md w-full">
-
-                    <div className="mb-8">
-                        <h2 className="text-3xl font-bold mb-2">Welcome Back</h2>
-                        <p className="text-gray-500">Enter your credentials to access the secure exam.</p>
-                    </div>
-
-                    <form className="space-y-4" onSubmit={handleLogin}>
-                        <div className="space-y-1">
-                            <label className="text-xs font-semibold text-gray-400 uppercase ml-1">Exam Code</label>
-                            <div className="relative">
-                                <Hash className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500" />
-                                <input
-                                    type="text"
-                                    value={examCode}
-                                    onChange={(e) => setExamCode(e.target.value.replace(/\s/g, ''))}
-                                    placeholder="EXAM-1234-5678"
-                                    className="w-full bg-gray-800/50 border border-gray-700 focus:border-cyan-500/50 focus:ring-4 focus:ring-cyan-500/10 rounded-xl py-3 pl-12 pr-4 text-white placeholder-gray-500 transition-all outline-none"
-                                />
-                            </div>
-                        </div>
-
-                        <div className="space-y-1">
-                            <label className="text-xs font-semibold text-gray-400 uppercase ml-1">Candidate ID</label>
-                            <div className="relative">
-                                <User className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500" />
-                                <input
-                                    type="text"
-                                    value={candidateId}
-                                    onChange={(e) => setCandidateId(e.target.value.replace(/\s/g, ''))}
-                                    placeholder="Enter your ID"
-                                    className="w-full bg-gray-800/50 border border-gray-700 focus:border-cyan-500/50 focus:ring-4 focus:ring-cyan-500/10 rounded-xl py-3 pl-12 pr-4 text-white placeholder-gray-500 transition-all outline-none"
-                                />
-                            </div>
-                        </div>
-
-                        <button
-                            type="submit"
-                            className="w-full bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white font-bold py-3.5 rounded-xl shadow-lg hover:shadow-cyan-500/20 transition-all flex items-center justify-center gap-2 mt-6 active:scale-95"
-                        >
-                            Start Secure Exam
-                            <ChevronRight className="w-5 h-5" />
-                        </button>
-                    </form>
-
-                    <p className="mt-8 text-center text-sm text-gray-500">
-                        Protected by ParikshaX Secure Environment.
-                        <br />
-                        IP: 192.168.1.10 • Session: Secure
+                <div className="relative max-w-md">
+                    <h1 className="text-3xl xl:text-4xl font-semibold leading-tight tracking-tight">
+                        Fair, secure and reliable online examinations.
+                    </h1>
+                    <p className="mt-4 text-slate-400 leading-relaxed">
+                        Sign in with the credentials provided by your institution to begin your proctored assessment.
                     </p>
 
-                    <div className="mt-8 pt-8 border-t border-gray-800 text-center">
-                        <button
-                            onClick={() => navigate('/admin/login')}
-                            className="text-xs text-gray-600 hover:text-cyan-500 transition-colors uppercase tracking-widest font-bold"
-                        >
-                            Internal Admin Portal
-                        </button>
+                    <ul className="mt-10 space-y-5">
+                        {FEATURES.map(({ icon: Icon, title, text }) => (
+                            <li key={title} className="flex gap-4">
+                                <div className="w-9 h-9 rounded-lg bg-white/10 ring-1 ring-white/10 flex items-center justify-center shrink-0">
+                                    <Icon className="w-4 h-4 text-brand-300" />
+                                </div>
+                                <div>
+                                    <div className="font-medium text-white">{title}</div>
+                                    <div className="text-sm text-slate-400">{text}</div>
+                                </div>
+                            </li>
+                        ))}
+                    </ul>
+                </div>
+
+                <div className="relative text-xs text-slate-500">
+                    &copy; {new Date().getFullYear()} ParikshaX. All rights reserved.
+                </div>
+            </aside>
+
+            {/* Right — Login form */}
+            <main className="flex-1 flex flex-col min-h-screen">
+                <div className="lg:hidden px-6 pt-6">
+                    <BrandMark subtitle="Secure Assessment Platform" />
+                </div>
+
+                <div className="flex-1 flex items-center justify-center px-6 py-12">
+                    <div className="w-full max-w-sm">
+                        <div className="mb-8">
+                            <h2 className="text-2xl font-semibold tracking-tight text-slate-900">Candidate sign in</h2>
+                            <p className="mt-2 text-sm text-slate-500">Enter the exam code and candidate ID shared with you by your institution.</p>
+                        </div>
+
+                        <form className="space-y-5" onSubmit={handleLogin}>
+                            <div>
+                                <label htmlFor="examCode" className="label">Exam code</label>
+                                <div className="relative">
+                                    <Hash className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                                    <input
+                                        id="examCode"
+                                        type="text"
+                                        autoComplete="off"
+                                        value={examCode}
+                                        onChange={(e) => setExamCode(e.target.value.replace(/\s/g, ''))}
+                                        placeholder="e.g. EXAM-1234"
+                                        className="input pl-10 font-mono tracking-wide placeholder:font-sans placeholder:tracking-normal"
+                                    />
+                                </div>
+                            </div>
+
+                            <div>
+                                <label htmlFor="candidateId" className="label">Candidate ID</label>
+                                <div className="relative">
+                                    <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                                    <input
+                                        id="candidateId"
+                                        type="text"
+                                        autoComplete="off"
+                                        value={candidateId}
+                                        onChange={(e) => setCandidateId(e.target.value.replace(/\s/g, ''))}
+                                        placeholder="Your candidate ID"
+                                        className="input pl-10 font-mono tracking-wide placeholder:font-sans placeholder:tracking-normal"
+                                    />
+                                </div>
+                            </div>
+
+                            <button type="submit" disabled={loading} className="btn btn-primary btn-lg w-full">
+                                {loading ? (
+                                    <><span className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" /> Verifying…</>
+                                ) : (
+                                    <>Continue to exam <ArrowRight className="w-4 h-4" /></>
+                                )}
+                            </button>
+                        </form>
+
+                        <div className="mt-8 rounded-lg border border-slate-200 bg-slate-50 p-4 text-xs text-slate-600 leading-relaxed">
+                            <span className="font-medium text-slate-800">Before you start:</span> make sure your camera works,
+                            you are in a quiet, well-lit room, and you have a stable internet connection.
+                        </div>
                     </div>
                 </div>
 
-                {/* Window Controls (Mock for Kiosk feel) */}
-                {!window.electronAPI && ( // Only show if not in real fullscreen/kiosk to verify UI
-                    <div className="absolute top-4 right-4 flex gap-2 text-gray-600">
-                    </div>
-                )}
-            </div>
+                <footer className="px-6 py-5 border-t border-slate-100 flex flex-col sm:flex-row gap-2 items-center justify-between text-xs text-slate-500">
+                    <span>Need help? Contact your exam administrator.</span>
+                    <button
+                        onClick={() => navigate('/admin/login')}
+                        className="font-medium text-slate-500 hover:text-brand-600 transition-colors"
+                    >
+                        Administrator login
+                    </button>
+                </footer>
+            </main>
 
             <AlertModal
                 isOpen={alertConfig.isOpen}

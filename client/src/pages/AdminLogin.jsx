@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Lock, Mail, ChevronRight, AlertCircle, CheckCircle } from 'lucide-react';
+import { Lock, Mail, ArrowLeft, AlertCircle } from 'lucide-react';
 import { API_BASE_URL } from '../config';
+import BrandMark from '../components/BrandMark';
 
 const AdminLogin = () => {
     const [email, setEmail] = useState('');
@@ -17,8 +18,6 @@ const AdminLogin = () => {
             navigate('/admin', { replace: true });
         }
     }, [navigate]);
-
-
 
     const handleLogin = async (e) => {
         e.preventDefault();
@@ -43,102 +42,85 @@ const AdminLogin = () => {
             }
         } catch (err) {
             console.error(err);
-            setError('Connection failed. Please check server.');
+            setError('Connection failed. Please check that the server is running.');
             setLoading(false);
         }
     };
 
     return (
-        <div className="min-h-screen bg-[#0a0a0c] flex items-center justify-center p-4 selection:bg-cyan-500/30">
-            {/* Background Glow */}
-            <div className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-cyan-500/10 blur-[120px] rounded-full pointer-events-none"></div>
-
-            <div className="w-full max-w-[440px] relative">
-                <div className="absolute -top-12 -left-12 w-24 h-24 bg-cyan-600/20 blur-3xl rounded-full"></div>
-                <div className="absolute -bottom-12 -right-12 w-32 h-32 bg-blue-600/20 blur-3xl rounded-full"></div>
-
-                <div className="relative bg-[#111218]/80 backdrop-blur-xl border border-white/5 p-10 rounded-[32px] shadow-2xl overflow-hidden">
-                    {/* Header */}
-                    <div className="mb-10 text-center">
-                        <div className="w-16 h-16 bg-gradient-to-br from-cyan-400 to-blue-600 rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-lg shadow-cyan-500/20 ring-1 ring-white/20">
-                            <Lock className="w-8 h-8 text-white" />
-                        </div>
-                        <h1 className="text-3xl font-bold bg-gradient-to-r from-white to-gray-400 bg-clip-text text-transparent mb-2">
-                            Admin Access
-                        </h1>
-                        <p className="text-gray-500 text-sm">Secure Portal Login</p>
+        <div className="min-h-screen bg-slate-50 flex flex-col">
+            <div className="flex-1 flex items-center justify-center p-4">
+                <div className="w-full max-w-[400px]">
+                    <div className="flex justify-center mb-8">
+                        <BrandMark subtitle="Administration Console" size="lg" />
                     </div>
 
-                    <form onSubmit={handleLogin} className="space-y-5">
-                        <div className="space-y-2">
-                            <label className="text-xs font-bold text-gray-400 uppercase tracking-widest ml-1">Email Address</label>
-                            <div className="relative group">
-                                <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500 group-focus-within:text-cyan-400 transition-colors" />
-                                <input
-                                    type="email"
-                                    required
-                                    value={email}
-                                    onChange={(e) => setEmail(e.target.value)}
-                                    placeholder="admin@parikshax.com"
-                                    className="w-full bg-[#1a1b23] border border-white/5 rounded-2xl py-4 pl-12 pr-4 text-gray-200 outline-none focus:border-cyan-500/50 focus:ring-4 focus:ring-cyan-500/5 transition-all"
-                                />
-                            </div>
+                    <div className="card p-8">
+                        <div className="mb-6">
+                            <h1 className="text-xl font-semibold text-slate-900">Sign in to your account</h1>
+                            <p className="text-sm text-slate-500 mt-1">Authorised personnel only.</p>
                         </div>
 
-                        <div className="space-y-2">
-                            <div className="flex justify-between items-center ml-1">
-                                <label className="text-xs font-bold text-gray-400 uppercase tracking-widest">Password</label>
+                        <form onSubmit={handleLogin} className="space-y-5">
+                            <div>
+                                <label htmlFor="email" className="label">Email address</label>
+                                <div className="relative">
+                                    <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                                    <input
+                                        id="email"
+                                        type="email"
+                                        required
+                                        autoComplete="username"
+                                        value={email}
+                                        onChange={(e) => setEmail(e.target.value)}
+                                        placeholder="admin@institution.edu"
+                                        className="input pl-10"
+                                    />
+                                </div>
                             </div>
-                            <div className="relative group">
-                                <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500 group-focus-within:text-cyan-400 transition-colors" />
-                                <input
-                                    type="password"
-                                    required
-                                    value={password}
-                                    onChange={(e) => setPassword(e.target.value)}
-                                    placeholder="••••••••"
-                                    className="w-full bg-[#1a1b23] border border-white/5 rounded-2xl py-4 pl-12 pr-4 text-gray-200 outline-none focus:border-cyan-500/50 focus:ring-4 focus:ring-cyan-500/5 transition-all"
-                                />
-                            </div>
-                        </div>
 
-                        {error && (
-                            <div className="p-4 bg-red-500/10 border border-red-500/20 rounded-2xl flex items-center gap-3 animate-shake">
-                                <AlertCircle className="w-5 h-5 text-red-400 shrink-0" />
-                                <p className="text-red-400 text-sm font-medium">{error}</p>
+                            <div>
+                                <label htmlFor="password" className="label">Password</label>
+                                <div className="relative">
+                                    <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                                    <input
+                                        id="password"
+                                        type="password"
+                                        required
+                                        autoComplete="current-password"
+                                        value={password}
+                                        onChange={(e) => setPassword(e.target.value)}
+                                        placeholder="••••••••"
+                                        className="input pl-10"
+                                    />
+                                </div>
                             </div>
-                        )}
 
-                        <button
-                            type="submit"
-                            disabled={loading}
-                            className="w-full group relative bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white font-bold py-4 rounded-2xl shadow-lg shadow-cyan-500/20 transition-all active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
-                        >
-                            <div className="flex items-center justify-center gap-2">
+                            {error && (
+                                <div className="p-3 bg-red-50 border border-red-200 rounded-lg flex items-start gap-2.5" role="alert">
+                                    <AlertCircle className="w-4 h-4 text-red-600 shrink-0 mt-0.5" />
+                                    <p className="text-red-700 text-sm">{error}</p>
+                                </div>
+                            )}
+
+                            <button type="submit" disabled={loading} className="btn btn-primary w-full py-3">
                                 {loading ? (
-                                    <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
-                                ) : (
-                                    <>
-                                        <span>Sign In Now</span>
-                                        <ChevronRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
-                                    </>
-                                )}
-                            </div>
-                        </button>
-                    </form>
-
-                    <div className="mt-8 pt-8 border-t border-white/5 text-center">
-                        <p className="text-gray-600 text-[10px] uppercase tracking-[0.2em]">
-                            System Security v2.0 • Encryption Enabled
-                        </p>
+                                    <><span className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" /> Signing in…</>
+                                ) : 'Sign in'}
+                            </button>
+                        </form>
                     </div>
-                </div>
 
-                {/* Footer Link */}
-                <div className="mt-8 text-center text-gray-500 text-sm">
-                    Not an admin? <button onClick={() => navigate('/')} className="text-cyan-400 hover:text-cyan-300 font-bold underline-offset-4 hover:underline transition-all">Go to Home</button>
+                    <div className="mt-6 text-center">
+                        <button onClick={() => navigate('/')} className="inline-flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-900 transition-colors">
+                            <ArrowLeft className="w-4 h-4" /> Back to candidate login
+                        </button>
+                    </div>
                 </div>
             </div>
+            <footer className="py-5 text-center text-xs text-slate-400">
+                &copy; {new Date().getFullYear()} ParikshaX · Secure Assessment Platform
+            </footer>
         </div>
     );
 };

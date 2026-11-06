@@ -1,50 +1,49 @@
 import React from 'react';
-import { AlertCircle, CheckCircle2, Info, XCircle } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, Info, XCircle } from 'lucide-react';
 
 function AlertModal({ isOpen, onClose, title, message, type = 'error' }) {
     if (!isOpen) return null;
 
     const config = {
         error: {
-            icon: <XCircle className="w-8 h-8 text-red-500" />,
-            bg: 'bg-red-500/10',
-            button: 'bg-red-600 hover:bg-red-700 shadow-red-500/20'
+            icon: <XCircle className="w-6 h-6 text-red-600" />,
+            bg: 'bg-red-50',
+            button: 'btn-danger'
         },
         success: {
-            icon: <CheckCircle2 className="w-8 h-8 text-emerald-500" />,
-            bg: 'bg-emerald-500/10',
-            button: 'bg-emerald-600 hover:bg-emerald-700 shadow-emerald-500/20'
+            icon: <CheckCircle2 className="w-6 h-6 text-emerald-600" />,
+            bg: 'bg-emerald-50',
+            button: 'btn-success'
         },
         warning: {
-            icon: <AlertCircle className="w-8 h-8 text-amber-500" />,
-            bg: 'bg-amber-500/10',
-            button: 'bg-amber-600 hover:bg-amber-700 shadow-amber-500/20'
+            icon: <AlertTriangle className="w-6 h-6 text-amber-600" />,
+            bg: 'bg-amber-50',
+            button: 'btn-primary'
         },
         info: {
-            icon: <Info className="w-8 h-8 text-cyan-500" />,
-            bg: 'bg-cyan-500/10',
-            button: 'bg-cyan-600 hover:bg-cyan-700 shadow-cyan-500/20'
+            icon: <Info className="w-6 h-6 text-brand-600" />,
+            bg: 'bg-brand-50',
+            button: 'btn-primary'
         }
     };
 
     const current = config[type] || config.error;
 
     return (
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-[999] p-4">
-            <div className="bg-gray-900 border border-gray-800 rounded-3xl max-w-sm w-full p-8 shadow-2xl animate-in fade-in zoom-in duration-200">
-                <div className="flex flex-col items-center text-center">
-                    <div className={`w-20 h-20 ${current.bg} rounded-full flex items-center justify-center mb-6`}>
+        <div className="modal-backdrop z-[999]" role="alertdialog" aria-modal="true" aria-labelledby="alert-title">
+            <div className="modal-panel max-w-md p-6">
+                <div className="flex gap-4">
+                    <div className={`w-11 h-11 ${current.bg} rounded-full flex items-center justify-center shrink-0`}>
                         {current.icon}
                     </div>
-
-                    <h3 className="text-2xl font-black text-white mb-2 tracking-tight">{title}</h3>
-                    <p className="text-gray-400 mb-8 leading-relaxed">{message}</p>
-
-                    <button
-                        onClick={onClose}
-                        className={`w-full py-4 rounded-2xl ${current.button} text-white font-bold transition-all transform active:scale-95 shadow-lg`}
-                    >
-                        Got it, Thanks
+                    <div className="min-w-0 pt-0.5">
+                        <h3 id="alert-title" className="text-lg font-semibold text-slate-900">{title}</h3>
+                        <p className="mt-1.5 text-sm text-slate-600 leading-relaxed">{message}</p>
+                    </div>
+                </div>
+                <div className="mt-6 flex justify-end">
+                    <button onClick={onClose} className={`btn ${current.button} min-w-[96px]`} autoFocus>
+                        OK
                     </button>
                 </div>
             </div>

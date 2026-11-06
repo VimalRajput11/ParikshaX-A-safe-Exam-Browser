@@ -23,7 +23,7 @@ export default defineConfig([
       },
     },
     rules: {
-      'no-unused-vars': ['error', { varsIgnorePattern: '^[A-Z_]' }],
+      'no-unused-vars': ['error', { varsIgnorePattern: '^[A-Z_]', argsIgnorePattern: '^[A-Z_]' }],
       // React Compiler rules (react-hooks v7) flag patterns that work at runtime;
       // keep them visible as warnings without failing CI/deploy builds.
       'react-hooks/immutability': 'warn',
